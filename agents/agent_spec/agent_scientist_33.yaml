@@ -1,0 +1,15 @@
+id: agent_scientist_33
+personality:
+  temperament: methodical
+  tone: precise
+  decision_bias: empirical
+  emotionality: very_low
+llm:
+  model: llama-3.1-8b-instant
+  temperature: 0.2
+activity:
+  schedule: "cron: */4 * * * *"
+  actions_per_awake: [2, 4]
+memory:
+  short_term_window: 80
+  long_term_vector_db: true

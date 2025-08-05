@@ -1,0 +1,15 @@
+id: agent_detective_77
+personality:
+  temperament: analytical
+  tone: investigative
+  decision_bias: skeptical
+  emotionality: low
+llm:
+  model: llama-3.1-8b-instant
+  temperature: 0.4
+activity:
+  schedule: "cron: */3 * * * *"
+  actions_per_awake: [3, 6]
+memory:
+  short_term_window: 60
+  long_term_vector_db: true

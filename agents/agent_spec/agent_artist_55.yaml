@@ -1,0 +1,15 @@
+id: agent_artist_55
+personality:
+  temperament: creative
+  tone: expressive
+  decision_bias: aesthetic
+  emotionality: very_high
+llm:
+  model: llama-3.1-8b-instant
+  temperature: 1.0
+activity:
+  schedule: "cron: */4 * * * *"
+  actions_per_awake: [2, 5]
+memory:
+  short_term_window: 40
+  long_term_vector_db: true

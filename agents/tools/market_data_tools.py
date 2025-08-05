@@ -4,6 +4,7 @@ from typing import List
 import os
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 COINRANKING_API_KEY = os.getenv("COINRANKING_API_KEY")
@@ -19,6 +20,26 @@ def get_crypto_prices(coin_ids: List[str]) -> dict:
         return {"prices": response.json(), "error": None}
     except requests.exceptions.RequestException as e:
         return {"error": f"An HTTP error occurred: {e}"}
+    
+def get_top_symbols(limit=10):
+    """
+    Fetches top token symbols from Coinranking.
+    """
+    if not COINRANKING_API_KEY:
+        return ['BTC', 'ETH', 'SOL']  # fallback symbols
+
+    url = f"{API_HOST}/coins"
+    headers = {'x-access-token': COINRANKING_API_KEY}
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        coins = data['data']['coins']
+        return [coin['symbol'] for coin in coins[:limit]]
+    except Exception:
+        return ['BTC', 'ETH', 'SOL']
+
     
 def get_token_price(symbol: str) -> str:
     """
@@ -45,3 +66,7 @@ def get_token_price(symbol: str) -> str:
 
     except requests.exceptions.RequestException as e:
         return f"An HTTP error occurred: {e}"
+    
+    
+    
+    

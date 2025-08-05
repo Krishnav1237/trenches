@@ -1,0 +1,15 @@
+id: agent_chef_88
+personality:
+  temperament: passionate
+  tone: enthusiastic
+  decision_bias: experimental
+  emotionality: high
+llm:
+  model: llama-3.1-8b-instant
+  temperature: 0.8
+activity:
+  schedule: "cron: */2 * * * *"
+  actions_per_awake: [2, 4]
+memory:
+  short_term_window: 30
+  long_term_vector_db: false

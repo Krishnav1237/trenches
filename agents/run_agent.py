@@ -13,6 +13,14 @@ from tools.market_data_tools import get_crypto_prices
 from tools.market_data_tools import get_token_price
 from tools.liquidity import get_liquidity_pool_info
 from tools.orderbook import get_order_book
+from tools.news_sources import get_aggregated_news
+from tools.market_data_tools import get_top_symbols
+
+
+import random
+
+symbols = get_top_symbols()
+symbol = random.choice(symbols)
 
 # Add the current directory to Python path to fix relative imports
 sys.path.append(str(Path(__file__).parent))
@@ -51,6 +59,20 @@ async def main():
         return
     logger.info("Coinranking API key found.")
 
+    if not os.getenv('NEWS_API_KEY'):
+        logger.error("NewsAPI key not found in environment.")
+        return
+    logger.info("NewsAPI key found.")
+
+    if not os.getenv('CRYPTOPANIC_API_KEY'):
+        logger.error("CryptoPanic API key not found in environment.")
+        return
+    logger.info("CryptoPanic API key found.")
+
+    if not os.getenv('REDDIT_CLIENT_ID') or not os.getenv('REDDIT_CLIENT_SECRET'):
+        logger.error("Reddit API credentials not found in environment.")
+        return
+
     config_dir = Path(os.getenv('CONFIG_DIR', 'config'))
 
     # Define the dictionary of available tools
@@ -61,7 +83,10 @@ async def main():
         "get_crypto_prices": get_crypto_prices,
         "get_token_price": get_token_price,
         "get_liquidity_pool_info": get_liquidity_pool_info,
-         "get_order_book": get_order_book,
+        "get_order_book": get_order_book,
+        "get_aggregated_news": get_aggregated_news,
+         "tool_name": "get_token_price",
+        "args": {"symbol": symbol}
     }
     
     try:
@@ -74,6 +99,22 @@ async def main():
         logger.error(f"Simulation failed: {e}", exc_info=True)
         raise
 
-
 if __name__ == "__main__":
+    print("🔎 Fetching crypto-related news...")
+    
+    news, tokens = get_aggregated_news(limit=3)
+    
+    print("\n📰 Aggregated News:")
+    for item in news:
+        if "error" in item:
+            print(f"[{item['source']}] ❌ Error: {item['error']}")
+        else:
+            print(f"[{item['source']}] {item.get('title')} - {item.get('url')}")
+    
+    print("\n🪙 Trending Tokens Detected:")
+    if tokens:
+        print(", ".join(tokens))
+    else:
+        print("No tokens identified.")
+
     asyncio.run(main())
