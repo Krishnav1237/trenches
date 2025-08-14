@@ -15,6 +15,7 @@ from tools.liquidity import get_liquidity_pool_info
 from tools.orderbook import get_order_book
 from tools.news_sources import get_aggregated_news
 from tools.market_data_tools import get_top_symbols
+from tools.dex_screener import get_liquidity_pool_info, get_order_book
 
 
 import random
@@ -68,6 +69,12 @@ async def main():
         logger.error("CryptoPanic API key not found in environment.")
         return
     logger.info("CryptoPanic API key found.")
+
+    if not os.getenv('COIN_MARKET_CAP'):
+        logger.error("CoinMarketCap API key not found in environment.")
+        return
+    logger.info("CoinMarketCap API key found.")
+
 
     if not os.getenv('REDDIT_CLIENT_ID') or not os.getenv('REDDIT_CLIENT_SECRET'):
         logger.error("Reddit API credentials not found in environment.")

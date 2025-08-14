@@ -7,7 +7,8 @@ import logging
 import time
 import random
 from pathlib import Path
-from typing import Dict, List, Optional, Callable
+from typing import Dict, Optional, Callable, Any
+import json
 
 from models.config import SimulationConfig, LLMConfig
 from models.entities import Tweet, SimulationContext, ActionType
@@ -16,7 +17,32 @@ from core.prompt_engine import DynamicPromptEngine
 from core.action_engine import ActionProbabilityEngine
 from core.llm_client import LLMClient
 from core.agent_manager import AgentManager
-import json
+
+from tools.news_sources import get_aggregated_news, detect_trending_tokens
+from tools.dex_screener import get_liquidity_pool_info  
+
+SYMBOL_NORMALIZATION = {
+    "BITCOIN": "BTC",
+    "BTC": "BTC",
+    "ETHEREUM": "ETH",
+    "ETH": "ETH",
+    "SOLANA": "SOL",
+    "SOL": "SOL",
+    "DOGECOIN": "DOGE",
+    "DOGE": "DOGE",
+    "CARDANO": "ADA",
+    "ADA": "ADA",
+    "POLKADOT": "DOT",
+    "DOT": "DOT",
+    "LITECOIN": "LTC",
+    "LTC": "LTC",
+    "XRP": "XRP",
+    "SHIBA": "SHIB",
+    "SHIB": "SHIB",
+    "PEPE": "PEPE",
+    "BNB": "BNB",
+    "BLOCKDAG": "BDAG",  
+}
 
 
 class TrenchesSimulation:
@@ -57,12 +83,12 @@ class TrenchesSimulation:
 
     async def __aenter__(self):
         self.api_client = TrenchesAPIClient(self.sim_config)
-        await self.api_client.__aenter__()
+        await self.api_client.__aenter__()  # type: ignore
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self.api_client:
-            await self.api_client.__aexit__(exc_type, exc_val, exc_tb)
+            await self.api_client.__aexit__(exc_type, exc_val, exc_tb)  # type: ignore
 
     async def initialize(self):
         """Initialize the simulation"""
@@ -85,7 +111,7 @@ class TrenchesSimulation:
         """Ensure all agents have profiles in the backend"""
         existing_profiles = await self.api_client.get_profiles()
         if existing_profiles is None:
-             existing_profiles = []
+            existing_profiles = []
         existing_usernames = {p.username for p in existing_profiles}
         for agent in self.agents.values():
             agent_id = agent.get('id')
@@ -120,42 +146,79 @@ class TrenchesSimulation:
         except Exception as e:
             self.logger.error(f"[{agent_id}] Failed to execute {action}: {e}")
 
-    # In core/simulation.py
+    # ----- Internal helpers -----
+
+    def _build_prompt_safe(
+        self,
+        agent: Dict,
+        kind: str,
+        context: SimulationContext,
+        tool_result: Any = None,
+        extra_context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Call prompt_engine.build_dynamic_prompt with extra_context when supported,
+        otherwise fall back silently (keeps your sim running even if prompt_engine
+        hasn't been updated yet).
+        """
+        try:
+            return self.prompt_engine.build_dynamic_prompt(
+                agent, kind, context, tool_result=tool_result, extra_context=extra_context  # type: ignore
+            )
+        except TypeError:
+            # Backward compatible path (no extra_context in signature)
+            return self.prompt_engine.build_dynamic_prompt(
+                agent, kind, context, tool_result=tool_result
+            )
+
+    def _normalize_symbol(self, token: str) -> str:
+        return SYMBOL_NORMALIZATION.get(token.upper(), token.upper())
+
+    # ----- Actions -----
 
     async def _execute_tweet(self, agent: Dict, context: SimulationContext):
         """Execute tweet action with a potential tool-use loop."""
         agent_id = agent.get('id')
 
-        # 1. First "thought" pass: Ask the LLM to decide on an action (tweet or tool use)
-        prompt = self.prompt_engine.build_dynamic_prompt(agent, "tweet", context)
+        prompt = self._build_prompt_safe(
+            agent, "tweet", context,
+            extra_context={
+                "trending_tokens": getattr(context, "trending_tokens", ["BTC"]),
+                "liquidity_data": getattr(context, "liquidity_data", {}),
+            }
+        )
         thought = await self.llm_client.generate_content_async(agent, prompt)
 
         try:
-            # 2. Check if the thought is a tool call by attempting to parse it as JSON
             tool_call = json.loads(thought)
             tool_name = tool_call.get("tool_name")
-            tool_args = tool_call.get("args", {})
+            tool_args = tool_call.get("args", {}) if isinstance(tool_call.get("args"), dict) else {}
+
+            # Auto-inject a trending token if LLM forgot the symbol
+            if tool_name == "get_token_price" and "symbol" not in tool_args:
+                tool_args["symbol"] = random.choice(getattr(context, "trending_tokens", ["BTC"]))
 
             if tool_name in self.tools:
                 self.logger.info(f"[{agent_id}] decided to use tool: {tool_name} with args {tool_args}")
-                
-                # 3. Execute the tool
                 tool_function = self.tools[tool_name]
                 tool_result = tool_function(**tool_args)
                 self.logger.info(f"[{agent_id}] got tool result: {tool_result}")
 
-                # 4. Second pass: Feed the result back to the LLM to generate the final tweet
-                final_prompt = self.prompt_engine.build_dynamic_prompt(agent, "tweet", context, tool_result=tool_result)
+                final_prompt = self._build_prompt_safe(
+                    agent, "tweet", context, tool_result=tool_result,
+                    extra_context={
+                        "trending_tokens": getattr(context, "trending_tokens", ["BTC"]),
+                        "liquidity_data": getattr(context, "liquidity_data", {}),
+                    }
+                )
                 content = await self.llm_client.generate_content_async(agent, final_prompt)
             else:
-                # If the JSON doesn't match a known tool, generate a default response
+                # Thought was JSON but unknown tool → fallback text
                 content = "I was thinking about using a tool, but changed my mind."
-
         except (json.JSONDecodeError, AttributeError):
-            # 5. If it's not JSON, it's a direct tweet
+            # Not a tool call → treat as final tweet content
             content = thought
 
-        # 6. Post the final tweet
         tweet = Tweet(agent_id=agent_id, content=content)
         posted_tweet = await self.api_client.post_tweet(tweet)
 
@@ -168,9 +231,11 @@ class TrenchesSimulation:
     async def _execute_like(self, agent: Dict, context: SimulationContext):
         agent_id = agent.get('id')
         recent_tweets = await self.api_client.get_timeline(limit=5)
-        if not recent_tweets: return
+        if not recent_tweets:
+            return
         other_tweets = [t for t in recent_tweets if t.agent_id != agent_id]
-        if not other_tweets: return
+        if not other_tweets:
+            return
         tweet_to_like = random.choice(other_tweets)
         success = await self.api_client.like_tweet(tweet_to_like.id)
         if success:
@@ -180,9 +245,11 @@ class TrenchesSimulation:
     async def _execute_retweet(self, agent: Dict, context: SimulationContext):
         agent_id = agent.get('id')
         recent_tweets = await self.api_client.get_timeline(limit=5)
-        if not recent_tweets: return
+        if not recent_tweets:
+            return
         other_tweets = [t for t in recent_tweets if t.agent_id != agent_id]
-        if not other_tweets: return
+        if not other_tweets:
+            return
         tweet_to_retweet = random.choice(other_tweets)
         success = await self.api_client.retweet(tweet_to_retweet.id)
         if success:
@@ -192,11 +259,19 @@ class TrenchesSimulation:
     async def _execute_reply(self, agent: Dict, context: SimulationContext):
         agent_id = agent.get('id')
         recent_tweets = await self.api_client.get_timeline(limit=5)
-        if not recent_tweets: return
+        if not recent_tweets:
+            return
         other_tweets = [t for t in recent_tweets if t.agent_id != agent_id]
-        if not other_tweets: return
+        if not other_tweets:
+            return
         tweet_to_reply = random.choice(other_tweets)
-        reply_prompt = self.prompt_engine.build_dynamic_prompt(agent, "reply", context)
+        reply_prompt = self._build_prompt_safe(
+            agent, "reply", context,
+            extra_context={
+                "trending_tokens": getattr(context, "trending_tokens", ["BTC"]),
+                "liquidity_data": getattr(context, "liquidity_data", {}),
+            }
+        )
         reply_content = await self.llm_client.generate_content_async(agent, reply_prompt)
         reply = Tweet(agent_id=agent_id, content=reply_content)
         posted_reply = await self.api_client.reply_to_tweet(tweet_to_reply.id, reply)
@@ -219,7 +294,10 @@ class TrenchesSimulation:
 
     async def _run_onchain_snapshot(self):
         self.logger.info("--- Starting On-chain Snapshot ---")
-        wallets_to_watch = ["0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"]
+        wallets_to_watch = [
+            "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+            "0xbe0eb53f46cd790cd13851d5eff43d12404d33e8"
+        ]
         check_balance_tool = self.tools.get("get_eth_balance")
         if not check_balance_tool:
             self.logger.error("'get_eth_balance' tool not registered. Skipping snapshot.")
@@ -238,12 +316,41 @@ class TrenchesSimulation:
 
     async def run_simulation_round(self, round_num: int):
         self.logger.info(f"\nRound {round_num + 1}/{self.sim_config.rounds}")
+
+        # 1) News + trending tokens
+        news_data, _ = get_aggregated_news(limit=5)
+        trending_tokens_raw = detect_trending_tokens(news_data)
+        trending_tokens = [self._normalize_symbol(t) for t in trending_tokens_raw] or ["BTC"]
+        self.logger.info(f"Trending tokens for this round: {trending_tokens}")
+
+        # 2) On-chain snapshot (unchanged)
         await self._run_onchain_snapshot()
+
+        # 3) Analyze timeline context
         context = await self.analyze_current_context()
+        context.trending_tokens = trending_tokens
+
+        # 4) Enrich with liquidity data for top trending tokens (limit to avoid rate-limit)
+        context.liquidity_data = {}
+        for token in trending_tokens[:5]:
+            info = get_liquidity_pool_info(symbol=token)
+            if info and not info.get("error"):
+                context.liquidity_data[token] = info
+        if context.liquidity_data:
+            pretty = ", ".join(
+                f"{sym}: ${int(info['liquidityUsd']):,} liq @ ${info['priceUsd']}"
+                for sym, info in context.liquidity_data.items()
+                if info.get("liquidityUsd") and info.get("priceUsd")
+            )
+            if pretty:
+                self.logger.info(f"Liquidity snapshot: {pretty}")
+
+        # 5) Select & run agents
         active_agents = self.agent_manager.select_active_agents(
             self.agents, context, self.sim_config.max_concurrent_agents
         )
         self.logger.info(f"{len(active_agents)} agents selected for this round")
+
         tasks = [self.simulate_agent(agent, context) for agent in active_agents]
         await asyncio.gather(*tasks, return_exceptions=True)
 

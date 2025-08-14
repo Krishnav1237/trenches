@@ -67,7 +67,42 @@ type WalletSnapshot struct {
 	Timestamp     time.Time `db:"timestamp" json:"timestamp"`
 }
 
+type NewsItem struct {
+	Source string `json:"source"`
+	Title  string `json:"title"`
+	URL    string `json:"url"`
+}
+
+type MarketData struct {
+	Prices     map[string]float64   `json:"prices"`
+	Liquidity  []Pool               `json:"liquidity"`
+	OrderBooks map[string]OrderBook `json:"order_books"`
+}
+
+type Pool struct {
+	Symbol string  `json:"symbol"`
+	TVL    float64 `json:"tvl_usd"`
+	APY    float64 `json:"apy"`
+	URL    string  `json:"url"`
+}
+
+type OrderBook struct {
+	Bids [][]float64 `json:"bids"`
+	Asks [][]float64 `json:"asks"`
+}
+
 var db *sqlx.DB
+
+func GetMarketData(c *gin.Context) {
+	data := MarketData{
+		Prices: map[string]float64{"BTC": 67000, "ETH": 3500},
+		Liquidity: []Pool{
+			{Symbol: "USDC-WETH", TVL: 92884538, APY: 18.79, URL: "https://dexscreener.com/"},
+		},
+		OrderBooks: map[string]OrderBook{},
+	}
+	c.JSON(http.StatusOK, data)
+}
 
 func logEvent(event any) {
 	wrapped := map[string]any{
@@ -87,6 +122,67 @@ func logEvent(event any) {
 	bytes, _ := json.Marshal(wrapped)
 	file.Write(bytes)
 	file.Write([]byte("\n"))
+}
+
+func GetNews(c *gin.Context) {
+	limit := 20
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+
+	var news []NewsItem
+	err := db.Select(&news, `
+        SELECT id, source, title, url, timestamp
+        FROM news
+        ORDER BY timestamp DESC
+        LIMIT $1
+    `, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, news)
+}
+
+func PostNews(c *gin.Context) {
+	var items []NewsItem
+	if err := c.ShouldBindJSON(&items); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	tx, err := db.Beginx()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start tx"})
+		return
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Preparex(`INSERT INTO news (source, title, url) 
+                              VALUES ($1, $2, $3) 
+                              ON CONFLICT (url) DO NOTHING`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to prepare stmt"})
+		return
+	}
+	defer stmt.Close()
+
+	inserted := 0
+	for _, it := range items {
+		if _, err := stmt.Exec(it.Source, it.Title, it.URL); err == nil {
+			inserted++
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit tx"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "inserted": inserted, "received": len(items)})
 }
 
 func main() {
@@ -558,6 +654,74 @@ func main() {
 		}
 		c.JSON(http.StatusOK, snapshots)
 	})
+
+	// 📰 Get all news
+	r.GET("/news", func(c *gin.Context) {
+		limit := 20
+		if v := c.Query("limit"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+				limit = n
+			}
+		}
+
+		var news []NewsItem
+		err := db.Select(&news, `
+        SELECT id, source, title, url, timestamp
+        FROM news
+        ORDER BY timestamp DESC
+        LIMIT $1
+    `, limit)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, news)
+	})
+
+	// 📰 Insert news batch (Python → Go)
+	r.POST("/news", func(c *gin.Context) {
+		var items []NewsItem
+		if err := c.ShouldBindJSON(&items); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		tx, err := db.Beginx()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start transaction"})
+			return
+		}
+		defer tx.Rollback()
+
+		stmt, err := tx.Preparex(`INSERT INTO news (source, title, url)
+                              VALUES ($1, $2, $3)
+                              ON CONFLICT (url) DO NOTHING`)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to prepare statement"})
+			return
+		}
+		defer stmt.Close()
+
+		inserted := 0
+		for _, it := range items {
+			if _, err := stmt.Exec(it.Source, it.Title, it.URL); err == nil {
+				inserted++
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":   "ok",
+			"inserted": inserted,
+			"received": len(items),
+		})
+	})
+
 	// Start server
 	r.Run(":8080")
 }

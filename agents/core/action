@@ -1,0 +1,15 @@
+                  ┌────────────┐
+Base Probabilities│like: 0.20  │
+                  └────┬───────┘
+                       ↓
+       Personality: "playful" → × 0.8
+                       ↓
+            After: like = 0.16
+                       ↓
+     Context: "high_activity" → × 1.3
+                       ↓
+         After: like = 0.208
+                       ↓
+ Agent Preference Modifier → × 1.0
+                       ↓
+Final Weighted Score: 0.208 → Normalized

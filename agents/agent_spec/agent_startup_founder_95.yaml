@@ -1,0 +1,17 @@
+id: agent_startup_founder_95
+personality:
+  temperament: optimistic
+  tone: energetic
+  emotionality: high
+  decision_bias: positive
+activity:
+  activity_probability: 0.85
+  active_hours: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+llm:
+  model: llama-3.1-8b-instant
+  temperature: 0.8
+  max_tokens: 280
+constraints:
+  max_tweet_length: 280
+  min_delay_between_actions: 1.2
+  max_actions_per_round: 4

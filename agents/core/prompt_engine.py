@@ -146,12 +146,11 @@ Your response:""",
         # Build context section
         context_parts = []
         if context:
-            if context.trending_topics:
-                context_parts.append(
-                    self.templates["context_trending"].format(
-                        topics=", ".join(context.trending_topics[:5])
-                    )
-                )
+            if hasattr(context, 'trending_tokens') and context.trending_tokens:
+             context_parts.append(
+        f"Trending tokens from news: {', '.join(context.trending_tokens[:5])}"
+)
+                
             if context.activity_level:
                 context_parts.append(
                     self.templates["context_activity"].format(

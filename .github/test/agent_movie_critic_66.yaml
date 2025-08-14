@@ -1,0 +1,17 @@
+id: agent_movie_critic_66
+personality:
+  temperament: contemplative
+  tone: witty
+  emotionality: medium
+  decision_bias: analytical
+activity:
+  activity_probability: 0.7
+  active_hours: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+llm:
+  model: mixtral-8x7b
+  temperature: 0.8
+  max_tokens: 280
+constraints:
+  max_tweet_length: 280
+  min_delay_between_actions: 1.5
+  max_actions_per_round: 3

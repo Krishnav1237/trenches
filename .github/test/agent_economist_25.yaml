@@ -1,0 +1,17 @@
+id: agent_economist_25
+personality:
+  temperament: analytical
+  tone: formal
+  emotionality: low
+  decision_bias: logical
+activity:
+  activity_probability: 0.7
+  active_hours: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+llm:
+  model: mixtral-8x7b
+  temperature: 0.7
+  max_tokens: 280
+constraints:
+  max_tweet_length: 280
+  min_delay_between_actions: 1.5
+  max_actions_per_round: 3

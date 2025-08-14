@@ -1,0 +1,17 @@
+id: agent_crypto_analyst_45
+personality:
+  temperament: analytical
+  tone: technical
+  emotionality: medium
+  decision_bias: balanced
+activity:
+  activity_probability: 0.8
+  active_hours: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+llm:
+  model: mixtral-8x7b
+  temperature: 0.7
+  max_tokens: 280
+constraints:
+  max_tweet_length: 280
+  min_delay_between_actions: 1.0
+  max_actions_per_round: 4

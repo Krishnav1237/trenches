@@ -6,6 +6,21 @@ from tools.reddit_scraper import fetch_reddit_posts
 from dotenv import load_dotenv
 load_dotenv()
 
+def fetch_from_coinmarketcap(query="crypto", limit=3):
+    key = os.getenv("COIN_MARKET_CAP")
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+    try:
+        resp = requests.get(url, params={
+            "start": 1,
+            "limit": limit,
+            "convert": "USD",
+            "CMC_PRO_API_KEY": key
+        })
+        resp.raise_for_status()
+        return [{"source": "CoinMarketCap", "title": a["name"], "url": f"https://coinmarketcap.com/currencies/{a['slug']}"} for a in resp.json().get("data", [])]
+    except Exception as e:
+        return [{"source": "CoinMarketCap", "error": str(e)}]
+
 def fetch_from_newsapi(query="crypto", limit=3):
     key = os.getenv("NEWS_API_KEY")
     url = "https://newsapi.org/v2/everything"
@@ -63,7 +78,7 @@ def fetch_from_reddit(limit=5):
       
         print(f"👤 Reddit logged in as: {reddit.user.me()}")
 
-        subreddit = reddit.subreddit("CryptoCurrency+bitcoin+CryptoMarkets")
+        subreddit = reddit.subreddit("CryptoCurrency+bitcoin+CryptoMarkets+wallstreetbets")
         posts = []
 
         for post in subreddit.hot(limit=limit):
@@ -84,15 +99,24 @@ def get_aggregated_news(limit=3):
     all_news += fetch_from_newsapi(limit=limit)
     all_news += fetch_from_cryptopanic(limit=limit)
     all_news += fetch_from_reddit(limit=limit)
+    all_news += fetch_from_coinmarketcap(limit=limit)
     
-    tokens = extract_trending_tokens(all_news)
+    # Flatten in case any fetcher returns nested lists
+    flat_news = []
+    for item in all_news:
+        if isinstance(item, list):
+            flat_news.extend(item)  # unpack inner list
+        else:
+            flat_news.append(item)
+    
+    tokens = detect_trending_tokens(flat_news)
     print(f"🪙 Trending tokens found: {tokens}")
 
     # Try Reddit tool as a fallback
     try:
         reddit_news = fetch_reddit_posts(limit=limit)
         for r in reddit_news:
-            all_news.append({
+            flat_news.append({
                 "source": "Reddit",
                 "title": r["title"],
                 "url": r["url"]
@@ -100,12 +124,11 @@ def get_aggregated_news(limit=3):
     except Exception as e:
         print(f"❌ Reddit error: {e}")
 
-    
-    return all_news, tokens
+    return flat_news, tokens
 
     
 
-def extract_trending_tokens(news_items):
+def detect_trending_tokens(news_items):
     """
     Extracts crypto token symbols or names from a list of news item dicts.
     Looks into title and content/summary fields.
