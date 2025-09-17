@@ -19,7 +19,7 @@ class SimulationConfig:
     max_concurrent_agents: int = 10
     health_check_timeout: int = 3
     request_timeout: int = 5
-
+    news_limit: int = 5
     @classmethod
     def from_file(cls, path: Path) -> 'SimulationConfig':
         """Load configuration from file"""

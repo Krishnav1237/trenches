@@ -157,4 +157,3 @@ def detect_trending_tokens(news_items):
                 found.add(keyword.upper())
     
     return list(found)
-

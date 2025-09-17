@@ -49,6 +49,11 @@ async def main():
         return
     logger.info("Groq API key found.")
 
+    if not os.getenv('GEMINI_API_KEY'):
+        logger.error("Gemini API key not found in environment.")
+        return
+    logger.info("Gemini API key found.")
+
     if not os.getenv('ETHERSCAN_API_KEY'):
         logger.error("Etherscan API key not found in environment.")
         return
