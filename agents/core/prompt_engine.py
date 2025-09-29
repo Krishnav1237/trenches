@@ -5,7 +5,8 @@ import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from models.entities import SimulationContext, Tweet
+from core.simulation_context import SimulationContext
+from models.entities import Tweet
 
 
 class DynamicPromptEngine:
@@ -39,7 +40,9 @@ Your response:""",
             "context_sentiment": "Community sentiment: {sentiment}",
             "constraint_length": "Keep response under {max_chars} characters",
             "context_time": "Current time context: {time_info}",
-            "context_recent_tweets": "Recent community tweets:\n{tweets}"
+            "context_recent_tweets": "Recent community tweets:\n{tweets}",
+            "context_liquidity": "Liquidity snapshot: {liquidity_summary}",
+            "context_recent_actions": "Recent notable agent actions:\n{actions}"
         }
 
         if config_path and (config_path / "prompt_templates.yaml").exists():
@@ -122,7 +125,8 @@ Your response:""",
 
         return default_analyzers
 
-    def build_dynamic_prompt(self, agent: Dict, action_type: str, context: SimulationContext = None, tool_result: str = None) -> str:
+    def build_dynamic_prompt(self, agent: Dict, action_type: str, context: SimulationContext = None,
+                             tool_result: Optional[str] = None, extra_context: Optional[Dict[str, Any]] = None) -> str:
         """Build completely dynamic prompt based on agent and context"""
         agent_id = agent.get('id', 'Agent')
         personality = agent.get('personality', {})
@@ -145,11 +149,38 @@ Your response:""",
 
         # Build context section
         context_parts = []
+
+        # incorporate extra_context (explicit) first
+        if extra_context:
+            # trending tokens from extra_context
+            if extra_context.get("trending_tokens"):
+                context_parts.append(self.templates["context_trending"].format(
+                    topics=", ".join(extra_context.get("trending_tokens", [])[:8])
+                ))
+            # liquidity summary if provided
+            if extra_context.get("liquidity_snapshot_summary"):
+                liq = extra_context["liquidity_snapshot_summary"]
+                liq_str = ", ".join([f"{sym}: ${liq[sym]['liquidity_usd']:,} @ ${liq[sym]['price_usd']}" for sym in liq])
+                context_parts.append(self.templates["context_liquidity"].format(liquidity_summary=liq_str))
+            # recent agent actions summary
+            if extra_context.get("recent_agent_actions"):
+                actions = extra_context["recent_agent_actions"]
+                action_lines = []
+                for a in actions[:5]:
+                    t = a.get("type", "act")
+                    who = a.get("agent_id", "unknown")
+                    excerpt = a.get("content_excerpt") or a.get("target") or ""
+                    action_lines.append(f"- @{who} {t} {excerpt}")
+                context_parts.append(self.templates["context_recent_actions"].format(actions="\n".join(action_lines)))
+
+        # Then incorporate tweet-derived context
         if context:
-            if hasattr(context, 'trending_tokens') and context.trending_tokens:
-             context_parts.append(
-        f"Trending tokens from news: {', '.join(context.trending_tokens[:5])}"
-)
+            if getattr(context, "trending_tokens", None):
+                context_parts.append(
+                    self.templates["context_trending"].format(
+                        topics=", ".join(context.trending_tokens[:8])
+                    )
+                )
                 
             if context.activity_level:
                 context_parts.append(
@@ -237,7 +268,7 @@ Your response:""",
             return context
 
         context.recent_tweets = tweets
-        context.trending_topics = self._extract_trending_topics(tweets)
+        context.trending_tokens = self._extract_trending_topics(tweets)
         context.activity_level = self._calculate_activity_level(tweets)
         context.sentiment = self._analyze_sentiment(tweets)
         context.time_context = self._get_time_context()

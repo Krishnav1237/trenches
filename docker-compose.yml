@@ -50,6 +50,16 @@ services:
       DB_PASSWORD: secret
       DB_NAME: trenches
 
+  frontend:
+    build:
+      context: ./Frontend/trenches-pixel-perfect-main
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8080
+
 volumes:
   pgdata:
   grafana_data:

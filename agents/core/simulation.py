@@ -7,11 +7,13 @@ import logging
 import time
 import random
 from pathlib import Path
-from typing import Dict, Optional, Callable, Any
+from typing import Dict, List, Optional, Callable, Any
 import json
+import itertools
 
 from models.config import SimulationConfig, LLMConfig
-from models.entities import Tweet, SimulationContext, ActionType
+from models.entities import Tweet, ActionType
+from core.simulation_context import SimulationContext, LiquidityInfo, WalletSnapshot
 from core.api_client import TrenchesAPIClient
 from core.prompt_engine import DynamicPromptEngine
 from core.action_engine import ActionProbabilityEngine
@@ -132,6 +134,8 @@ class TrenchesSimulation:
     async def execute_agent_action(self, agent: Dict, action: str, context: SimulationContext):
         """Execute a specific action for an agent"""
         agent_id = agent.get('id')
+        self.logger.info(f"[{agent_id}] Executing action: {action}")
+        
         try:
             if action == ActionType.TWEET.value:
                 await self._execute_tweet(agent, context)
@@ -140,11 +144,11 @@ class TrenchesSimulation:
             elif action == ActionType.RETWEET.value:
                 await self._execute_retweet(agent, context)
             elif action == ActionType.REPLY.value:
-                await self._execute_tweet(agent, context)
+                await self._execute_reply(agent, context)
             else:
-                self.logger.warning(f"Unknown action '{action}' for agent {agent_id}")
+                self.logger.warning(f"[{agent_id}] Unknown action '{action}'")
         except Exception as e:
-            self.logger.error(f"[{agent_id}] Failed to execute {action}: {e}")
+            self.logger.error(f"[{agent_id}] Failed to execute {action}: {e}", exc_info=True)
 
     # ----- Internal helpers -----
 
@@ -281,16 +285,28 @@ class TrenchesSimulation:
 
     async def simulate_agent(self, agent: Dict, context: SimulationContext):
         agent_id = agent.get('id')
+        self.logger.info(f"[{agent_id}] Starting agent simulation")
+        
         activity = agent.get('activity', {})
         action_range = activity.get('actions_per_awake', [1, 2])
         num_actions = random.randint(action_range[0], action_range[1])
-        for _ in range(num_actions):
-            action = self.action_engine.select_action(agent, context)
-            await self.execute_agent_action(agent, action, context)
-            if num_actions > 1:
-                delay_range = activity.get('action_delay_range', self.sim_config.agent_delay_range)
-                delay = random.uniform(delay_range[0], delay_range[1])
-                await asyncio.sleep(delay)
+        
+        self.logger.info(f"[{agent_id}] Will perform {num_actions} actions")
+        
+        for action_num in range(num_actions):
+            try:
+                action = self.action_engine.select_action(agent, context)
+                self.logger.info(f"[{agent_id}] Action {action_num + 1}/{num_actions}: {action}")
+                await self.execute_agent_action(agent, action, context)
+                
+                if num_actions > 1 and action_num < num_actions - 1:
+                    delay_range = activity.get('action_delay_range', self.sim_config.agent_delay_range)
+                    delay = random.uniform(delay_range[0], delay_range[1])
+                    await asyncio.sleep(delay)
+            except Exception as e:
+                self.logger.error(f"[{agent_id}] Failed action {action_num + 1}: {e}")
+                
+        self.logger.info(f"[{agent_id}] Completed agent simulation")
 
     async def _run_onchain_snapshot(self):
         self.logger.info("--- Starting On-chain Snapshot ---")
@@ -329,6 +345,7 @@ class TrenchesSimulation:
         # 3) Analyze timeline context
         context = await self.analyze_current_context()
         context.trending_tokens = trending_tokens
+        context.trending_topics = trending_tokens  # For action engine compatibility
 
         # 4) Enrich with liquidity data for top trending tokens (limit to avoid rate-limit)
         context.liquidity_data = {}
@@ -352,7 +369,13 @@ class TrenchesSimulation:
         self.logger.info(f"{len(active_agents)} agents selected for this round")
 
         tasks = [self.simulate_agent(agent, context) for agent in active_agents]
-        await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Check for exceptions in agent execution
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                agent_id = active_agents[i].get('id', f'agent_{i}')
+                self.logger.error(f"Agent {agent_id} failed with exception: {result}")
 
     async def run_simulation(self):
         """Run the complete simulation"""

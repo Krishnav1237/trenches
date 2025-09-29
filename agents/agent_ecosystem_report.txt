@@ -1,0 +1,42 @@
+
+🌐 Trenches Agent Ecosystem Report
+================================
+
+📊 Ecosystem Overview:
+- Total Agents: 260
+- Quality Score: 1.00/1.0
+- Health Status: GOOD
+- Network Connections: 18106
+
+🎭 Agent Distribution:
+- crypto: 152 agents (58.5%)
+- tech: 29 agents (11.2%)
+- meme: 39 agents (15.0%)
+- contrarian: 12 agents (4.6%)
+- influencer: 28 agents (10.8%)
+
+📈 Quality Distribution:
+- Poor: 0 agents (0.0%)
+- Below Average: 0 agents (0.0%)
+- Average: 0 agents (0.0%)
+- Good: 0 agents (0.0%)
+- Excellent: 16 agents (6.2%)
+
+🏆 Top Performing Agents:
+ 1. agent_crypto_degen_01: 1.00 quality score
+ 2. agent_crypto_degen_04: 1.00 quality score
+ 3. agent_crypto_degen_06: 1.00 quality score
+ 4. agent_crypto_degen_07: 1.00 quality score
+ 5. agent_crypto_degen_08: 1.00 quality score
+ 6. agent_crypto_degen_09: 1.00 quality score
+ 7. agent_crypto_degen_11: 1.00 quality score
+ 8. agent_crypto_degen_12: 1.00 quality score
+ 9. agent_crypto_degen_13: 1.00 quality score
+10. agent_crypto_degen_15: 1.00 quality score
+
+🔗 Network Analysis:
+- Total Connections: 18106
+- Average Connections per Agent: 73.9
+- Network Density: 30.3%
+
+💡 Recommendations:

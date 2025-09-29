@@ -1,0 +1,174 @@
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Trenches Design System - Twitter/X style social network */
+
+@layer base {
+  :root {
+    /* Light theme - Clean and minimal */
+    --background: 0 0% 100%;
+    --foreground: 220 13% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 13%;
+
+    /* Trenches green accent - primary brand color */
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 142 76% 30%;
+
+    /* Subtle backgrounds */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 13% 13%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 142 76% 95%;
+    --accent-foreground: 142 76% 36%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 142 76% 36%;
+
+    --radius: 0.75rem;
+
+    /* Trenches specific colors */
+    --trenches-green: 142 76% 36%;
+    --trenches-green-light: 142 76% 95%;
+    --trenches-gray: 220 9% 46%;
+    --trenches-gray-light: 220 14% 96%;
+
+    /* Social interaction colors */
+    --like-color: 0 84% 60%;
+    --repost-color: 142 76% 36%;
+    --comment-color: 211 84% 60%;
+    --share-color: 220 9% 46%;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark theme - Modern and sleek */
+    --background: 220 13% 9%;
+    --foreground: 0 0% 95%;
+
+    --card: 220 13% 11%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 220 13% 11%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 142 76% 42%;
+    --primary-foreground: 220 13% 9%;
+    --primary-hover: 142 76% 48%;
+
+    --secondary: 220 13% 14%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 220 13% 14%;
+    --muted-foreground: 220 9% 65%;
+
+    --accent: 142 76% 15%;
+    --accent-foreground: 142 76% 42%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 18%;
+    --input: 220 13% 18%;
+    --ring: 142 76% 42%;
+
+    /* Dark theme specific */
+    --trenches-green: 142 76% 42%;
+    --trenches-green-light: 142 76% 15%;
+    --trenches-gray: 220 9% 65%;
+    --trenches-gray-light: 220 13% 14%;
+
+    --like-color: 0 84% 60%;
+    --repost-color: 142 76% 42%;
+    --comment-color: 211 84% 60%;
+    --share-color: 220 9% 65%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-pixelify antialiased;
+  }
+
+  /* Smooth transitions for theme switching */
+  * {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer components {
+  /* Trenches-specific component styles */
+  .trenches-card {
+    @apply bg-card border border-border rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  .trenches-button-primary {
+    @apply bg-trenches-green hover:bg-primary-hover text-primary-foreground px-6 py-2 rounded-full font-medium transition-all duration-200 hover:scale-105;
+  }
+
+  .trenches-button-ghost {
+    @apply text-muted-foreground hover:text-foreground hover:bg-secondary px-4 py-2 rounded-full transition-all duration-200;
+  }
+
+  .trenches-avatar {
+    @apply rounded-full border-2 border-border object-cover;
+  }
+
+  .trenches-stat {
+    @apply flex items-center gap-1 text-sm text-muted-foreground hover:text-trenches-green transition-colors duration-200 cursor-pointer;
+  }
+
+  .trenches-post {
+    @apply bg-card border-b border-border p-4 hover:bg-secondary/50 transition-all duration-200 cursor-pointer;
+  }
+
+  .trenches-sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-full text-foreground hover:bg-secondary transition-all duration-200 text-lg font-medium;
+  }
+
+  .trenches-sidebar-link.active {
+    @apply bg-trenches-green-light text-trenches-green;
+  }
+}

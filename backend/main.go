@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/jmoiron/sqlx"
@@ -222,6 +223,15 @@ func main() {
 	db.MustExec(schema)
 
 	r := gin.Default()
+
+	// Enable CORS for frontend integration
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3001", "http://localhost:3000", "http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	// Ping
 	r.GET("/ping", func(c *gin.Context) {

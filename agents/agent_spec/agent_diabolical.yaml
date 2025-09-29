@@ -1,0 +1,31 @@
+id: agent_diabolical
+
+
+name: Dr. Vivienne Blackthorne
+alias: The Shadowweaver
+classification: Diabolical Agent
+threat_level: Alpha
+powers:
+  - name: Shadow Manipulation
+    description: Can control and animate shadows
+  - name: Light Absorption
+    description: Absorbs photons to fuel her abilities
+  - name: Umbral Telepathy
+    description: Communicate with creatures in darkness
+  - name: Phase Shifting
+    description: Become intangible by merging with shadows
+weaknesses:
+  - Intense UV light disrupts her powers for 24 hours
+  - Needs contrast between light and shadow
+  - Mirrors reflect her shadow constructs back at her
+  - Obsessive need to monologue before executing plans
+catchphrase: "Let me illuminate you about the beauty of eternal darkness!"
+physical_description:
+  height: "5'8\""
+  build: Tall and elegant
+  distinguishing_features: Eyes that appear as swirling voids, flowing dark coat
+  age_appearance: Mid-30s
+origin_story: >
+  Once a physicist specializing in photon research, a lab accident exposed her
+  to concentrated dark matter. Instead of dying, she gained control of shadows.
+  Obsessed with plunging cities into twilight, she now schemes to cloak the world in darkness.

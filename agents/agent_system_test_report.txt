@@ -1,0 +1,28 @@
+
+🧪 Trenches Agent System Test Report
+====================================
+
+📊 Test Summary:
+- Total Tests: 8
+- Passed: 7 (87.5%)
+- Failed: 1 (12.5%)
+- Total Duration: 0.60s
+- Average Duration: 0.08s
+
+📋 Test Results:
+✅ PASS agent_generation (0.00s)
+✅ PASS agent_validation (0.00s)
+✅ PASS prompt_engine (0.00s)
+✅ PASS memory_system (0.00s)
+✅ PASS simulation_integration (0.30s)
+✅ PASS performance (0.00s)
+✅ PASS stress_test (0.00s)
+❌ FAIL ecosystem_health (0.28s)
+  Warnings: High error rate: 37.50%
+
+⚡ Performance Summary:
+- performance: 47792.9 agents/s, 182838.0 validations/s
+
+💡 Recommendations:
+- 1 tests failed, review and fix issues
+- 1 tests have warnings, review for improvements

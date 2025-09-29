@@ -1,0 +1,46 @@
+agent_id: test_memory_agent
+behavioral_patterns:
+  positive_keywords_content: 1
+  reply: 2
+  retweet: 1
+  tweet: 2
+last_interactions:
+- &id001
+  content: First tweet about BTC
+  likes: 5
+  type: tweet
+- &id002
+  content: Great analysis!
+  likes: 2
+  type: reply
+- &id003
+  content: Retweeting this
+  likes: 8
+  type: retweet
+- &id004
+  content: ETH looking strong
+  likes: 12
+  type: tweet
+- &id005
+  content: I agree with this
+  likes: 3
+  type: reply
+long_term: []
+personality_traits: {}
+short_term:
+- importance: 0.0
+  interaction: *id001
+  timestamp: 1758438510.8443735
+- importance: 0.2
+  interaction: *id002
+  timestamp: 1758438510.844383
+- importance: 0.5
+  interaction: *id003
+  timestamp: 1758438510.8443878
+- importance: 0.3
+  interaction: *id004
+  timestamp: 1758438510.8443906
+- importance: 0.2
+  interaction: *id005
+  timestamp: 1758438510.8443935
+social_connections: []

@@ -112,15 +112,16 @@ def get_aggregated_news(limit=3):
     tokens = detect_trending_tokens(flat_news)
     print(f"🪙 Trending tokens found: {tokens}")
 
-    # Try Reddit tool as a fallback
+    # Try Reddit tool as a fallback (skip for now as it's async)
     try:
-        reddit_news = fetch_reddit_posts(limit=limit)
-        for r in reddit_news:
-            flat_news.append({
-                "source": "Reddit",
-                "title": r["title"],
-                "url": r["url"]
-            })
+        # reddit_news = fetch_reddit_posts(limit=limit)  # This is async, skip for sync function
+        # for r in reddit_news:
+        #     flat_news.append({
+        #         "source": "Reddit",
+        #         "title": r["title"],
+        #         "url": r["url"]
+        #     })
+        pass  # Reddit integration disabled in sync context
     except Exception as e:
         print(f"❌ Reddit error: {e}")
 

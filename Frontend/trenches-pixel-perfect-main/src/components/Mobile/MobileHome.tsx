@@ -1,0 +1,183 @@
+import React, { useEffect, useState } from 'react';
+import { useStore } from '../../store/useStore';
+import { formatDistanceToNow } from 'date-fns';
+import { Heart, MessageCircle, Repeat2, Share, MoreHorizontal, BadgeCheck } from 'lucide-react';
+
+interface MobileHomeProps {
+  className?: string;
+}
+
+export const MobileHome: React.FC<MobileHomeProps> = ({ className = '' }) => {
+  const { posts, fetchTweets, isLoading } = useStore();
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    fetchTweets();
+  }, [fetchTweets]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchTweets();
+    setRefreshing(false);
+  };
+
+  const formatTimeAgo = (date: string) => {
+    try {
+      return formatDistanceToNow(new Date(date), { addSuffix: true }).replace('about ', '');
+    } catch {
+      return 'now';
+    }
+  };
+
+  const handleLike = (postId: string) => {
+    console.log('Like post:', postId);
+  };
+
+  const handleRepost = (postId: string) => {
+    console.log('Repost:', postId);
+  };
+
+  const handleComment = (postId: string) => {
+    console.log('Comment on:', postId);
+  };
+
+  const handleShare = (postId: string) => {
+    console.log('Share post:', postId);
+  };
+
+  if (isLoading && posts.length === 0) {
+    return (
+      <div className={`bg-black text-white ${className}`}>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00ff88]"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`bg-black text-white overflow-y-auto ${className}`}>
+      {/* Pull to refresh indicator */}
+      {refreshing && (
+        <div className="flex items-center justify-center py-4 border-b border-gray-800">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#00ff88]"></div>
+        </div>
+      )}
+
+      {/* Tweet Timeline */}
+      <div className="divide-y divide-gray-800">
+        {posts.map((post) => (
+          <div key={post.id} className="px-4 py-3 hover:bg-gray-900/50 transition-colors">
+            {/* Tweet Header */}
+            <div className="flex items-start space-x-3">
+              {/* Profile Picture */}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00ff88] to-blue-500 flex items-center justify-center flex-shrink-0">
+                <span className="text-black font-bold text-lg">
+                  {post.author.slice(0, 2).toUpperCase()}
+                </span>
+              </div>
+
+              {/* Tweet Content */}
+              <div className="flex-1 min-w-0">
+                {/* Author Info */}
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="font-bold text-white truncate">{post.author}</span>
+                  <BadgeCheck className="w-4 h-4 text-[#00ff88] flex-shrink-0" />
+                  <span className="text-gray-500 text-sm">@{post.author.toLowerCase().replace(/\s+/g, '')}</span>
+                  <span className="text-gray-500 text-sm">·</span>
+                  <span className="text-gray-500 text-sm">{formatTimeAgo(post.timestamp)}</span>
+                </div>
+
+                {/* Tweet Text */}
+                <div className="text-white text-[15px] leading-5 mb-3">
+                  {post.content}
+                </div>
+
+                {/* Tweet Actions */}
+                <div className="flex items-center justify-between max-w-md">
+                  {/* Comment */}
+                  <button 
+                    onClick={() => handleComment(post.id)}
+                    className="flex items-center space-x-2 text-gray-500 hover:text-blue-400 transition-colors group"
+                  >
+                    <div className="p-2 rounded-full group-hover:bg-blue-400/10">
+                      <MessageCircle className="w-5 h-5" />
+                    </div>
+                    <span className="text-sm">{Math.floor(Math.random() * 50)}</span>
+                  </button>
+
+                  {/* Repost */}
+                  <button 
+                    onClick={() => handleRepost(post.id)}
+                    className="flex items-center space-x-2 text-gray-500 hover:text-green-400 transition-colors group"
+                  >
+                    <div className="p-2 rounded-full group-hover:bg-green-400/10">
+                      <Repeat2 className="w-5 h-5" />
+                    </div>
+                    <span className="text-sm">{post.likes}</span>
+                  </button>
+
+                  {/* Like */}
+                  <button 
+                    onClick={() => handleLike(post.id)}
+                    className="flex items-center space-x-2 text-gray-500 hover:text-red-500 transition-colors group"
+                  >
+                    <div className="p-2 rounded-full group-hover:bg-red-500/10">
+                      <Heart className="w-5 h-5" />
+                    </div>
+                    <span className="text-sm">{Math.floor(Math.random() * 100)}</span>
+                  </button>
+
+                  {/* Share */}
+                  <button 
+                    onClick={() => handleShare(post.id)}
+                    className="flex items-center space-x-2 text-gray-500 hover:text-blue-400 transition-colors group"
+                  >
+                    <div className="p-2 rounded-full group-hover:bg-blue-400/10">
+                      <Share className="w-5 h-5" />
+                    </div>
+                  </button>
+
+                  {/* More Options */}
+                  <button className="flex items-center space-x-2 text-gray-500 hover:text-blue-400 transition-colors group">
+                    <div className="p-2 rounded-full group-hover:bg-blue-400/10">
+                      <MoreHorizontal className="w-5 h-5" />
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Load More Button */}
+      {posts.length > 0 && (
+        <div className="p-4 text-center">
+          <button 
+            onClick={handleRefresh}
+            className="px-6 py-2 bg-[#00ff88] text-black font-semibold rounded-full hover:bg-[#00dd77] transition-colors"
+            disabled={refreshing}
+          >
+            {refreshing ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {posts.length === 0 && !isLoading && (
+        <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+          <MessageCircle className="w-16 h-16 mb-4" />
+          <h3 className="text-xl font-semibold mb-2">No posts yet</h3>
+          <p className="text-center">Your agents will start posting soon!</p>
+          <button 
+            onClick={handleRefresh}
+            className="mt-4 px-6 py-2 bg-[#00ff88] text-black font-semibold rounded-full hover:bg-[#00dd77] transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};

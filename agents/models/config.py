@@ -12,11 +12,11 @@ class SimulationConfig:
     """Dynamic simulation configuration"""
     rounds: int = 3
     backend_url: str = "http://localhost:8080"
-    backend_timeout: int = 5
-    round_delay_range: List[int] = field(default_factory=lambda: [8, 15])
-    agent_delay_range: List[float] = field(default_factory=lambda: [1.0, 3.0])
-    context_tweets_limit: int = 5
-    max_concurrent_agents: int = 10
+    backend_timeout: int = 30  # Increased for 100 agents
+    round_delay_range: List[int] = field(default_factory=lambda: [10, 20])  # Longer delays for 100 agents
+    agent_delay_range: List[float] = field(default_factory=lambda: [0.5, 2.0])  # Faster agent delays
+    context_tweets_limit: int = 20  # More context for 100 agents
+    max_concurrent_agents: int = 50  # Increased for 100-agent simulation
     health_check_timeout: int = 3
     request_timeout: int = 5
     news_limit: int = 5

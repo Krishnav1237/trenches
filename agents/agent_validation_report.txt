@@ -1,0 +1,44 @@
+
+Agent Validation Report
+======================
+
+Summary:
+- Total agents: 104
+- Valid agents: 102 (98.1%)
+- Invalid agents: 2 (1.9%)
+- Average quality score: 0.98/1.0
+
+Quality Distribution:
+- Poor: 1 agents (1.0%)
+- Below Average: 1 agents (1.0%)
+- Average: 0 agents (0.0%)
+- Good: 2 agents (1.9%)
+- Excellent: 5 agents (4.8%)
+
+Top Issues:
+- Missing required field: personality: 2 occurrences
+- Missing required field: skills: 2 occurrences
+- Missing required field: llm: 2 occurrences
+- Missing required field: activity: 2 occurrences
+- Missing required field: memory: 2 occurrences
+- Missing required personality field: temperament: 2 occurrences
+- Missing required personality field: tone: 2 occurrences
+- Missing required personality field: decision_bias: 2 occurrences
+- Missing required personality field: emotionality: 2 occurrences
+- Missing required personality field: description: 2 occurrences
+
+Top Recommendations:
+- Too few target assets (0), consider adding more: 4 agents
+- Too few biases (0), consider adding more: 4 agents
+- Consider making temperament and tone more distinct for better personality diversity: 4 agents
+- Add more target assets for better market coverage: 4 agents
+- Add more realistic cognitive biases to make the agent more human-like: 4 agents
+- Description is too short (0 chars), consider expanding it: 2 agents
+- Too few skills (0), consider adding more: 2 agents
+- Too few weaknesses (0), consider adding more: 1 agents
+- Origin story is too short (0 chars), consider expanding it: 1 agents
+- Catchphrase is too short (0 chars), consider expanding it: 1 agents
+
+Invalid Agents:
+- agent_diabolical: Missing required field: personality, Missing required field: skills, Missing required field: llm, Missing required field: activity, Missing required field: memory, Missing required personality field: temperament, Missing required personality field: tone, Missing required personality field: decision_bias, Missing required personality field: emotionality, Missing required personality field: description, Missing required LLM field: model, Missing required LLM field: temperature, Missing required activity field: schedule, Missing required activity field: actions_per_awake, Missing required memory field: short_term_window, Missing required memory field: long_term_vector_db
+- unknown: Missing required field: id, Missing required field: personality, Missing required field: alias, Missing required field: classification, Missing required field: threat_level, Missing required field: skills, Missing required field: weaknesses, Missing required field: catchphrase, Missing required field: origin_story, Missing required field: llm, Missing required field: activity, Missing required field: memory, Missing required personality field: temperament, Missing required personality field: tone, Missing required personality field: decision_bias, Missing required personality field: emotionality, Missing required personality field: description, Missing required LLM field: model, Missing required LLM field: temperature, Missing required activity field: schedule, Missing required activity field: actions_per_awake, Missing required memory field: short_term_window, Missing required memory field: long_term_vector_db

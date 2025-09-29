@@ -1,0 +1,22 @@
+agent_id: test_prompt_agent
+behavioral_patterns:
+  positive_keywords_content: 1
+  tweet: 1
+last_interactions:
+- &id001
+  content: BTC is looking bullish today!
+  likes: 10
+  retweets: 5
+  type: tweet
+long_term: []
+personality_traits:
+  decision_bias: logical
+  description: Test description
+  emotionality: low
+  temperament: analytical
+  tone: technical
+short_term:
+- importance: 0.6
+  interaction: *id001
+  timestamp: 1758438510.844232
+social_connections: []

@@ -72,6 +72,7 @@ class AgentStats:
 class SimulationContext:
     """Context information for simulation"""
     trending_topics: List[str] = None
+    trending_tokens: List[str] = None  # For crypto-specific context
     activity_level: str = "medium"
     sentiment: str = "neutral"
     time_context: str = "unknown"
@@ -80,5 +81,7 @@ class SimulationContext:
     def __post_init__(self):
         if self.trending_topics is None:
             self.trending_topics = []
+        if self.trending_tokens is None:
+            self.trending_tokens = []
         if self.recent_tweets is None:
             self.recent_tweets = []

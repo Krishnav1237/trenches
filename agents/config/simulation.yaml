@@ -1,0 +1,18 @@
+# Simulation Configuration for 100-Agent System
+# This configuration is optimized for running 100 agents concurrently
+
+# Basic simulation settings
+rounds: 3
+backend_url: "http://localhost:8080"
+backend_timeout: 30
+health_check_timeout: 10
+request_timeout: 15
+
+# Agent concurrency settings
+max_concurrent_agents: 50  # Run 50 agents simultaneously per round
+agent_delay_range: [0.5, 2.0]  # Shorter delays between agent actions
+round_delay_range: [15, 25]  # Longer delays between rounds for processing
+
+# Context and data settings
+context_tweets_limit: 30  # More tweets for context with 100 agents
+news_limit: 10  # More news items for better context
