@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -93,6 +94,15 @@ type OrderBook struct {
 }
 
 var db *sqlx.DB
+var wsHub *Hub
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for development
+	},
+}
 
 func GetMarketData(c *gin.Context) {
 	data := MarketData{
@@ -224,6 +234,11 @@ func main() {
 
 	r := gin.Default()
 
+	// Initialize WebSocket hub
+	wsHub = NewHub()
+	go wsHub.Run()
+	log.Println("✅ WebSocket hub started")
+
 	// Enable CORS for frontend integration
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3001", "http://localhost:3000", "http://localhost:5173"},
@@ -236,6 +251,27 @@ func main() {
 	// Ping
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
+	})
+
+	// WebSocket endpoint for real-time updates
+	r.GET("/ws", func(c *gin.Context) {
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			log.Println("WebSocket upgrade error:", err)
+			return
+		}
+
+		client := &Client{
+			hub:  wsHub,
+			conn: conn,
+			send: make(chan []byte, 256),
+		}
+
+		wsHub.register <- client
+
+		// Start client goroutines
+		go client.writePump()
+		go client.readPump()
 	})
 
 	// Create Tweet
@@ -263,6 +299,10 @@ func main() {
 			log.Println("Failed to cache tweet:", err)
 		}
 		logEvent(tweet)
+
+		// Broadcast new tweet to all WebSocket clients
+		wsHub.BroadcastTweet(tweet)
+
 		c.JSON(http.StatusCreated, gin.H{"status": "tweet posted", "tweet": tweet})
 
 		err = RedisClient.Set(ctx, fmt.Sprintf("tweet:%d", tweet.ID), tweetJSON, 5*time.Minute).Err()

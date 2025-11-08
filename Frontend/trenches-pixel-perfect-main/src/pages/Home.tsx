@@ -5,21 +5,31 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { useStore, MobilePost } from '@/store/useStore';
 import { useState, useEffect } from 'react';
-import { Image, Smile, MapPin, Calendar, RefreshCw, Activity } from 'lucide-react';
+import { Image, Smile, MapPin, Calendar, RefreshCw, Activity, Wifi, WifiOff } from 'lucide-react';
+import { useWebSocket } from '@/hooks/use-websocket';
 
 const Home = () => {
-  const { 
-    posts, 
-    currentUser, 
-    addPost, 
-    systemMetrics, 
-    isLoading, 
-    fetchTweets, 
-    fetchSystemMetrics, 
-    refreshData 
+  const {
+    posts,
+    currentUser,
+    addPost,
+    addWebSocketTweet,
+    systemMetrics,
+    isLoading,
+    fetchTweets,
+    fetchSystemMetrics,
+    refreshData
   } = useStore();
   const [newPost, setNewPost] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // WebSocket connection for real-time updates
+  const { isConnected } = useWebSocket({
+    onNewTweet: (tweet) => {
+      console.log('📡 New tweet received via WebSocket:', tweet);
+      addWebSocketTweet(tweet);
+    },
+  });
 
   // Fetch data on component mount
   useEffect(() => {
@@ -72,6 +82,19 @@ const Home = () => {
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-trenches-green" />
               <span className="text-sm font-medium">AI Agents Live</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {isConnected ? (
+                <>
+                  <Wifi className="w-4 h-4 text-trenches-green animate-pulse" />
+                  <span className="text-xs text-trenches-green font-medium">Real-time</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Connecting...</span>
+                </>
+              )}
             </div>
             {systemMetrics && (
               <>

@@ -68,6 +68,7 @@ interface AppState {
   setCurrentUser: (user: User) => void;
   setPosts: (posts: MobilePost[]) => void;
   addPost: (post: MobilePost) => void;
+  addWebSocketTweet: (tweet: AgentTweet) => void;
   likePost: (postId: string) => void;
   repostPost: (postId: string) => void;
   setNotifications: (notifications: Notification[]) => void;
@@ -75,7 +76,7 @@ interface AppState {
   toggleDarkMode: () => void;
   setSystemMetrics: (metrics: SystemMetrics) => void;
   setLoading: (loading: boolean) => void;
-  
+
   // API integration actions
   fetchTweets: () => Promise<void>;
   fetchSystemMetrics: () => Promise<void>;
@@ -143,7 +144,17 @@ export const useStore = create<AppState>((set, get) => ({
   setPosts: (posts) => set({ posts }),
   
   addPost: (post) => set((state) => ({ posts: [post, ...state.posts] })),
-  
+
+  addWebSocketTweet: (tweet) => {
+    const post = convertAgentTweetToMobilePost(tweet);
+    set((state) => {
+      // Check if tweet already exists to avoid duplicates
+      const exists = state.posts.some(p => p.id === post.id);
+      if (exists) return state;
+      return { posts: [post, ...state.posts] };
+    });
+  },
+
   likePost: async (postId) => {
     const state = get();
     const post = state.posts.find(p => p.id === postId);
