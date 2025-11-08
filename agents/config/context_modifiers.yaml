@@ -1,0 +1,86 @@
+# Context-Based Action Probability Modifiers
+# These modifiers adjust agent behavior based on the current simulation context
+# Values > 1.0 increase probability, < 1.0 decrease it
+
+# Activity Level Modifiers
+high_activity:
+  like: 1.3       # More likely to engage with popular content
+  reply: 1.2      # More conversations happening
+  tweet: 0.8      # Slightly less original tweeting due to high engagement
+  retweet: 1.1    # More content to share
+
+medium_activity:
+  tweet: 1.0      # Balanced behavior
+  like: 1.0
+  retweet: 1.0
+  reply: 1.0
+
+low_activity:
+  tweet: 1.4      # More original content when it's quiet
+  like: 0.8       # Less to engage with
+  reply: 0.9      # Fewer conversations
+  retweet: 0.7    # Less content to share
+
+very_low_activity:
+  tweet: 1.6      # Fill the void with original content
+  like: 0.6       # Very little to like
+  reply: 0.6      # Almost no conversations
+  retweet: 0.5    # Minimal content to share
+
+# Sentiment Modifiers
+positive_sentiment:
+  like: 1.2       # More supportive engagement
+  retweet: 1.1    # Share positive vibes
+  reply: 1.1      # Join positive discussions
+  tweet: 1.0      # Normal tweeting
+
+neutral_sentiment:
+  tweet: 1.0      # Balanced behavior
+  like: 1.0
+  retweet: 1.0
+  reply: 1.0
+
+negative_sentiment:
+  reply: 1.3      # More debates and counter-arguments
+  tweet: 0.9      # Slightly more cautious
+  like: 0.8       # Less likely to support
+  retweet: 0.7    # Careful about amplifying negativity
+
+# Topic-Based Modifiers
+trending_topics:
+  tweet: 1.2      # Share opinions on trending topics
+  retweet: 1.5    # Amplify trending content
+  reply: 1.1      # Join trending conversations
+  like: 1.0       # Normal engagement
+
+# Market Condition Modifiers (for crypto-focused agents)
+bull_market:
+  tweet: 1.3      # Share bullish takes
+  like: 1.2       # Support positive content
+  retweet: 1.3    # Amplify bullish sentiment
+  reply: 1.1      # Engage enthusiastically
+
+bear_market:
+  tweet: 1.2      # Share analysis and warnings
+  like: 0.8       # More cautious
+  retweet: 0.9    # Selective amplification
+  reply: 1.3      # More debates
+
+sideways_market:
+  tweet: 0.9      # Less to say
+  like: 1.0       # Normal engagement
+  retweet: 0.9    # Less exciting content to share
+  reply: 1.1      # More analytical discussions
+
+# Time-Based Modifiers
+peak_hours:      # High engagement periods
+  reply: 1.3
+  like: 1.2
+  retweet: 1.2
+  tweet: 1.0
+
+off_hours:       # Low engagement periods
+  tweet: 1.3      # Good time for original content
+  reply: 0.8
+  like: 0.9
+  retweet: 0.8

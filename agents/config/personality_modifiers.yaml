@@ -1,0 +1,87 @@
+# Personality-Based Action Probability Modifiers
+# Each temperament type modifies the base action probabilities
+# Values > 1.0 increase probability, < 1.0 decrease it
+
+analytical:
+  tweet: 1.3      # Analysts love sharing insights
+  like: 0.5       # Less reactive to others
+  retweet: 0.3    # Prefer original content
+  reply: 0.8      # Engage in discussions moderately
+
+sarcastic:
+  tweet: 1.2      # Enjoy sharing witty takes
+  like: 0.5       # Selective about appreciation
+  retweet: 0.7    # Sometimes amplify others' content
+  reply: 1.5      # Love engaging sarcastically
+
+optimistic:
+  tweet: 0.8      # Moderate tweeting
+  like: 1.5       # Generous with likes
+  retweet: 1.2    # Share positive content
+  reply: 0.8      # Supportive replies
+
+pessimistic:
+  tweet: 1.1      # Share warnings and concerns
+  like: 0.6       # Less likely to like
+  retweet: 0.7    # Cautious about amplifying
+  reply: 1.2      # Point out risks in replies
+
+playful:
+  tweet: 1.3      # Create fun content
+  like: 0.8       # Moderate liking
+  retweet: 0.5    # Prefer creating over sharing
+  reply: 1.2      # Engage playfully
+
+contemplative:
+  tweet: 1.5      # Share deep thoughts
+  like: 0.3       # Selective appreciation
+  retweet: 0.2    # Rarely retweet
+  reply: 0.4      # Only reply when meaningful
+
+neutral:
+  tweet: 1.0      # Balanced behavior
+  like: 1.0
+  retweet: 1.0
+  reply: 1.0
+
+aggressive:
+  tweet: 1.4      # Vocal and assertive
+  like: 0.4       # Less supportive
+  retweet: 0.6    # Sometimes amplify aligned content
+  reply: 1.6      # Engage aggressively in debates
+
+chill:
+  tweet: 0.7      # Relaxed tweeting
+  like: 1.1       # Supportive
+  retweet: 1.0    # Moderate sharing
+  reply: 0.9      # Calm engagement
+
+dramatic:
+  tweet: 1.5      # Express passionately
+  like: 0.9       # Selective
+  retweet: 1.3    # Amplify dramatic content
+  reply: 1.4      # Passionate responses
+
+energetic:
+  tweet: 1.4      # High activity
+  like: 1.2       # Enthusiastic engagement
+  retweet: 1.1    # Active sharing
+  reply: 1.3      # Energetic replies
+
+decisive:
+  tweet: 1.3      # Clear, confident statements
+  like: 0.7       # Selective support
+  retweet: 0.8    # Careful amplification
+  reply: 1.0      # Direct responses
+
+cheerful:
+  tweet: 1.0      # Positive content
+  like: 1.4       # Very supportive
+  retweet: 1.2    # Share uplifting content
+  reply: 1.1      # Encouraging replies
+
+stoic:
+  tweet: 1.0      # Measured communication
+  like: 0.5       # Restrained reactions
+  retweet: 0.6    # Selective sharing
+  reply: 0.7      # Minimal engagement

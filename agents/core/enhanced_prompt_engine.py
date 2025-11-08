@@ -449,7 +449,7 @@ Based on your personality and the current context, decide your next action. You 
             try:
                 with open(memory_file, 'r', encoding='utf-8') as f:
                     memory_data = yaml.safe_load(f)
-                
+
                 agent_id = memory_data.get("agent_id")
                 if agent_id:
                     self.agent_memories[agent_id] = AgentMemory(
@@ -462,6 +462,97 @@ Based on your personality and the current context, decide your next action. You 
                     )
             except Exception as e:
                 print(f"Failed to load memory file {memory_file}: {e}")
+
+    def analyze_context_from_tweets(self, tweets: List) -> Any:
+        """Analyze context from recent tweets (compatible with DynamicPromptEngine interface)"""
+        from models.entities import SimulationContext
+
+        context = SimulationContext()
+
+        if not tweets:
+            return context
+
+        context.recent_tweets = tweets
+        context.trending_tokens = self._extract_trending_topics(tweets)
+        context.activity_level = self._calculate_activity_level(tweets)
+        context.sentiment = self._analyze_sentiment(tweets)
+        context.time_context = self._get_time_context()
+
+        return context
+
+    def _extract_trending_topics(self, tweets: List) -> List[str]:
+        """Extract trending topics from recent tweets"""
+        word_freq = {}
+        stop_words = {"the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by", "a", "an", "is", "are", "was", "were"}
+
+        for tweet in tweets:
+            content = tweet.content.lower()
+            words = [w.strip('.,!?#@') for w in content.split()
+                    if len(w) > 3 and w not in stop_words]
+
+            for word in words:
+                word_freq[word] = word_freq.get(word, 0) + 1
+
+        # Return top trending words
+        sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
+        return [word for word, freq in sorted_words[:8] if freq >= 2]
+
+    def _calculate_activity_level(self, tweets: List) -> str:
+        """Calculate activity level based on recent tweets"""
+        tweet_count = len(tweets)
+
+        if tweet_count >= 10:
+            return 'high'
+        elif tweet_count >= 5:
+            return 'medium'
+        elif tweet_count >= 2:
+            return 'low'
+        else:
+            return 'very_low'
+
+    def _analyze_sentiment(self, tweets: List) -> str:
+        """Analyze overall sentiment of recent tweets"""
+        sentiment_keywords = self.context_analyzers['sentiment_analysis']
+
+        positive_count = 0
+        negative_count = 0
+
+        for tweet in tweets:
+            content = tweet.content.lower()
+
+            for word in sentiment_keywords['positive_keywords']:
+                if word in content:
+                    positive_count += 1
+
+            for word in sentiment_keywords['negative_keywords']:
+                if word in content:
+                    negative_count += 1
+
+        if positive_count > negative_count:
+            return 'positive'
+        elif negative_count > positive_count:
+            return 'negative'
+        else:
+            return 'neutral'
+
+    def _get_time_context(self) -> str:
+        """Get time-based context"""
+        current_hour = time.localtime().tm_hour
+
+        time_periods = {
+            'early_morning': range(5, 9),
+            'morning': range(9, 12),
+            'afternoon': range(12, 17),
+            'evening': range(17, 21),
+            'night': range(21, 24),
+            'late_night': list(range(0, 5))
+        }
+
+        for period, hours in time_periods.items():
+            if current_hour in hours:
+                return period
+
+        return 'unknown'
 
 
 def main():

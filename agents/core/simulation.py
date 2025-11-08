@@ -10,18 +10,27 @@ from pathlib import Path
 from typing import Dict, List, Optional, Callable, Any
 import json
 import itertools
+from datetime import datetime
 
 from models.config import SimulationConfig, LLMConfig
 from models.entities import Tweet, ActionType
 from core.simulation_context import SimulationContext, LiquidityInfo, WalletSnapshot
 from core.api_client import TrenchesAPIClient
-from core.prompt_engine import DynamicPromptEngine
+from core.enhanced_prompt_engine import EnhancedPromptEngine
 from core.action_engine import ActionProbabilityEngine
 from core.llm_client import LLMClient
 from core.agent_manager import AgentManager
 
 from tools.news_sources import get_aggregated_news, detect_trending_tokens
-from tools.dex_screener import get_liquidity_pool_info  
+from tools.dex_screener import get_liquidity_pool_info
+
+# Optional Neo4j integration
+try:
+    from core.neo4j_service import Neo4jSocialGraph
+    NEO4J_AVAILABLE = True
+except ImportError:
+    NEO4J_AVAILABLE = False
+    logging.warning("Neo4j driver not installed. Social graph tracking disabled.")  
 
 SYMBOL_NORMALIZATION = {
     "BITCOIN": "BTC",
@@ -60,11 +69,18 @@ class TrenchesSimulation:
         self.llm_config = LLMConfig.from_env_and_file(config_path / "llm.yaml")
 
         self.agent_manager = AgentManager(config_path)
-        self.prompt_engine = DynamicPromptEngine(config_path)
+        self.prompt_engine = EnhancedPromptEngine(config_path)
         self.action_engine = ActionProbabilityEngine(config_path)
         self.llm_client = LLMClient(self.llm_config)
         self.api_client: Optional[TrenchesAPIClient] = None
         self.tools: Dict[str, Callable] = {}
+
+        # Neo4j social graph (optional)
+        self.social_graph: Optional[Neo4jSocialGraph] = None
+        if NEO4J_AVAILABLE:
+            neo4j_enabled = os.getenv('NEO4J_ENABLED', 'true').lower() == 'true'
+            if neo4j_enabled:
+                self.social_graph = Neo4jSocialGraph()
 
         self.agents = {}
         self.simulation_stats = {
@@ -106,6 +122,23 @@ class TrenchesSimulation:
             self.logger.info("💡 Start the backend with: cd backend && go run main.go")
             raise ConnectionError("Backend not available")
         self.logger.info("Connected to Trenches backend")
+
+        # Initialize Neo4j social graph
+        if self.social_graph:
+            try:
+                if self.social_graph.connect():
+                    self.social_graph.initialize_schema()
+                    # Register all agents in the graph
+                    for agent in self.agents.values():
+                        self.social_graph.create_or_update_agent(agent)
+                    self.logger.info(f"📊 Neo4j social graph initialized with {len(self.agents)} agents")
+                else:
+                    self.logger.warning("⚠️ Neo4j connection failed. Social graph tracking disabled.")
+                    self.social_graph = None
+            except Exception as e:
+                self.logger.warning(f"⚠️ Neo4j initialization error: {e}. Social graph tracking disabled.")
+                self.social_graph = None
+
         self.logger.info(f"Simulation initialized with {len(self.agents)} agents")
         await self._ensure_agent_profiles()
 
@@ -135,7 +168,7 @@ class TrenchesSimulation:
         """Execute a specific action for an agent"""
         agent_id = agent.get('id')
         self.logger.info(f"[{agent_id}] Executing action: {action}")
-        
+
         try:
             if action == ActionType.TWEET.value:
                 await self._execute_tweet(agent, context)
@@ -161,22 +194,29 @@ class TrenchesSimulation:
         extra_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
-        Call prompt_engine.build_dynamic_prompt with extra_context when supported,
-        otherwise fall back silently (keeps your sim running even if prompt_engine
-        hasn't been updated yet).
+        Call prompt_engine.build_enhanced_prompt with full context support.
+        EnhancedPromptEngine provides sophisticated memory management and personality consistency.
         """
-        try:
-            return self.prompt_engine.build_dynamic_prompt(
-                agent, kind, context, tool_result=tool_result, extra_context=extra_context  # type: ignore
-            )
-        except TypeError:
-            # Backward compatible path (no extra_context in signature)
-            return self.prompt_engine.build_dynamic_prompt(
-                agent, kind, context, tool_result=tool_result
-            )
+        return self.prompt_engine.build_enhanced_prompt(
+            agent, kind, context, tool_result=tool_result, extra_context=extra_context
+        )
 
     def _normalize_symbol(self, token: str) -> str:
         return SYMBOL_NORMALIZATION.get(token.upper(), token.upper())
+
+    def _extract_token_mentions(self, content: str) -> List[str]:
+        """Extract cryptocurrency token mentions from tweet content"""
+        tokens = []
+        content_upper = content.upper()
+
+        # Check for known tokens
+        for token in SYMBOL_NORMALIZATION.keys():
+            if token in content_upper or f"${token}" in content_upper:
+                normalized = SYMBOL_NORMALIZATION[token]
+                if normalized not in tokens:
+                    tokens.append(normalized)
+
+        return tokens
 
     # ----- Actions -----
 
@@ -229,6 +269,33 @@ class TrenchesSimulation:
         if posted_tweet:
             self.simulation_stats['tweets_posted'] += 1
             self.logger.info(f"[{agent_id}] tweeted: {content[:50]}...")
+
+            # Track successful tweet in memory
+            self.prompt_engine.update_agent_memory(agent_id, {
+                'type': 'tweet',
+                'content': content,
+                'timestamp': time.time()
+            })
+
+            # Track in Neo4j social graph
+            if self.social_graph and posted_tweet.id:
+                try:
+                    self.social_graph.create_tweet_node({
+                        'id': posted_tweet.id,
+                        'agent_id': agent_id,
+                        'content': content,
+                        'timestamp': datetime.now().isoformat(),
+                        'sentiment': getattr(context, 'sentiment', 'neutral')
+                    })
+                    # Extract and link mentioned tokens
+                    tokens = self._extract_token_mentions(content)
+                    for token in tokens:
+                        self.social_graph.link_tweet_to_token(posted_tweet.id, token)
+                        sentiment = 'positive' if any(word in content.lower() for word in ['bullish', 'moon', 'pump']) else \
+                                  'negative' if any(word in content.lower() for word in ['bearish', 'dump', 'crash']) else 'neutral'
+                        self.social_graph.track_agent_sentiment_on_token(agent_id, token, sentiment)
+                except Exception as e:
+                    self.logger.debug(f"Neo4j tracking error: {e}")
         else:
             self.logger.error(f"[{agent_id}] Failed to post tweet")
 
@@ -246,6 +313,21 @@ class TrenchesSimulation:
             self.simulation_stats['likes_given'] += 1
             self.logger.info(f"[{agent_id}] liked tweet from @{tweet_to_like.agent_id}")
 
+            # Track like in memory
+            self.prompt_engine.update_agent_memory(agent_id, {
+                'type': 'like',
+                'target_agent': tweet_to_like.agent_id,
+                'content': tweet_to_like.content[:100],
+                'timestamp': time.time()
+            })
+
+            # Track in Neo4j social graph
+            if self.social_graph:
+                try:
+                    self.social_graph.track_like(agent_id, tweet_to_like.id, tweet_to_like.agent_id)
+                except Exception as e:
+                    self.logger.debug(f"Neo4j tracking error: {e}")
+
     async def _execute_retweet(self, agent: Dict, context: SimulationContext):
         agent_id = agent.get('id')
         recent_tweets = await self.api_client.get_timeline(limit=5)
@@ -259,6 +341,21 @@ class TrenchesSimulation:
         if success:
             self.simulation_stats['retweets_made'] += 1
             self.logger.info(f"[{agent_id}] retweeted from @{tweet_to_retweet.agent_id}")
+
+            # Track retweet in memory
+            self.prompt_engine.update_agent_memory(agent_id, {
+                'type': 'retweet',
+                'target_agent': tweet_to_retweet.agent_id,
+                'content': tweet_to_retweet.content[:100],
+                'timestamp': time.time()
+            })
+
+            # Track in Neo4j social graph
+            if self.social_graph:
+                try:
+                    self.social_graph.track_retweet(agent_id, tweet_to_retweet.id, tweet_to_retweet.agent_id)
+                except Exception as e:
+                    self.logger.debug(f"Neo4j tracking error: {e}")
 
     async def _execute_reply(self, agent: Dict, context: SimulationContext):
         agent_id = agent.get('id')
@@ -274,6 +371,7 @@ class TrenchesSimulation:
             extra_context={
                 "trending_tokens": getattr(context, "trending_tokens", ["BTC"]),
                 "liquidity_data": getattr(context, "liquidity_data", {}),
+                "original_tweet": tweet_to_reply.content
             }
         )
         reply_content = await self.llm_client.generate_content_async(agent, reply_prompt)
@@ -282,6 +380,31 @@ class TrenchesSimulation:
         if posted_reply:
             self.simulation_stats['replies_posted'] += 1
             self.logger.info(f"[{agent_id}] replied to @{tweet_to_reply.agent_id}")
+
+            # Track reply in memory
+            self.prompt_engine.update_agent_memory(agent_id, {
+                'type': 'reply',
+                'target_agent': tweet_to_reply.agent_id,
+                'original_content': tweet_to_reply.content[:100],
+                'reply_content': reply_content,
+                'timestamp': time.time()
+            })
+
+            # Track in Neo4j social graph
+            if self.social_graph and posted_reply.id:
+                try:
+                    # Create the reply tweet node
+                    self.social_graph.create_tweet_node({
+                        'id': posted_reply.id,
+                        'agent_id': agent_id,
+                        'content': reply_content,
+                        'timestamp': datetime.now().isoformat(),
+                        'sentiment': getattr(context, 'sentiment', 'neutral')
+                    })
+                    # Track the reply relationship
+                    self.social_graph.track_reply(agent_id, tweet_to_reply.id, posted_reply.id, tweet_to_reply.agent_id)
+                except Exception as e:
+                    self.logger.debug(f"Neo4j tracking error: {e}")
 
     async def simulate_agent(self, agent: Dict, context: SimulationContext):
         agent_id = agent.get('id')

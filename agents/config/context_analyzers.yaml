@@ -1,0 +1,304 @@
+# Context Analysis Configuration
+# Used by prompt engines to analyze simulation context from tweets and market data
+
+# Sentiment Analysis Keywords
+sentiment_keywords:
+  positive:
+    - great
+    - awesome
+    - love
+    - amazing
+    - wonderful
+    - excellent
+    - fantastic
+    - brilliant
+    - bullish
+    - moon
+    - pump
+    - gains
+    - profit
+    - winning
+    - success
+    - breakthrough
+    - innovative
+    - excited
+    - optimistic
+    - hopeful
+
+  negative:
+    - terrible
+    - awful
+    - hate
+    - horrible
+    - disappointing
+    - failed
+    - worst
+    - bad
+    - bearish
+    - dump
+    - crash
+    - rekt
+    - loss
+    - scam
+    - rug
+    - disaster
+    - panic
+    - worried
+    - concerned
+    - fearful
+
+  neutral:
+    - okay
+    - fine
+    - average
+    - normal
+    - stable
+    - steady
+    - holding
+    - watching
+    - waiting
+    - uncertain
+
+# Activity Level Thresholds
+activity_thresholds:
+  high: 10       # 10+ tweets = high activity
+  medium: 5      # 5-9 tweets = medium activity
+  low: 2         # 2-4 tweets = low activity
+  # < 2 tweets = very_low activity
+
+# Tweet Analysis Settings
+stop_words:
+  - the
+  - and
+  - or
+  - but
+  - in
+  - on
+  - at
+  - to
+  - for
+  - of
+  - with
+  - by
+  - a
+  - an
+  - is
+  - are
+  - was
+  - were
+  - this
+  - that
+  - from
+  - will
+  - can
+  - has
+  - have
+  - been
+  - being
+
+min_trend_frequency: 2      # Minimum times a word must appear to be trending
+max_trending_topics: 8      # Maximum number of trending topics to track
+max_recent_tweets_context: 3  # Number of recent tweets to include in context
+
+# Crypto-Specific Token Detection
+crypto_tokens:
+  major:
+    - BTC
+    - Bitcoin
+    - ETH
+    - Ethereum
+    - SOL
+    - Solana
+    - ADA
+    - Cardano
+    - DOT
+    - Polkadot
+    - AVAX
+    - Avalanche
+
+  meme:
+    - DOGE
+    - Dogecoin
+    - SHIB
+    - Shiba
+    - PEPE
+    - BONK
+    - WIF
+    - FLOKI
+
+  defi:
+    - UNI
+    - Uniswap
+    - AAVE
+    - MKR
+    - Maker
+    - COMP
+    - Compound
+    - CRV
+    - Curve
+    - SNX
+    - Synthetix
+
+# Market Condition Indicators
+market_indicators:
+  bull_signals:
+    - moon
+    - pump
+    - bullish
+    - rally
+    - breakout
+    - ATH
+    - "all-time high"
+    - green
+    - gains
+    - parabolic
+
+  bear_signals:
+    - dump
+    - crash
+    - bearish
+    - capitulation
+    - bottom
+    - red
+    - losses
+    - panic
+    - sell-off
+    - correction
+
+  volatility_signals:
+    - volatile
+    - swing
+    - choppy
+    - uncertain
+    - ranging
+    - indecisive
+    - consolidation
+
+# Topic Categories
+topic_categories:
+  technical_analysis:
+    - chart
+    - resistance
+    - support
+    - pattern
+    - indicator
+    - RSI
+    - MACD
+    - fibonacci
+    - trend
+    - breakout
+
+  fundamental_analysis:
+    - tokenomics
+    - whitepaper
+    - roadmap
+    - team
+    - partnership
+    - adoption
+    - revenue
+    - valuation
+    - metrics
+    - fundamentals
+
+  news_events:
+    - announcement
+    - release
+    - launch
+    - upgrade
+    - fork
+    - airdrop
+    - listing
+    - regulation
+    - SEC
+    - ETF
+
+  social_sentiment:
+    - FOMO
+    - FUD
+    - hype
+    - shill
+    - cope
+    - hopium
+    - moon
+    - lambo
+    - rekt
+    - diamond hands
+
+# Engagement Patterns
+engagement_patterns:
+  viral_threshold: 10       # Likes/RTs needed to be considered viral
+  controversial_threshold: 5  # Replies/likes ratio indicating controversy
+  quality_indicators:
+    - thread
+    - analysis
+    - research
+    - data
+    - chart
+    - explained
+    - guide
+    - tutorial
+
+  spam_indicators:
+    - click here
+    - free money
+    - guaranteed
+    - "!!!!"
+    - follow for
+    - DM me
+
+# Time-Based Context
+time_periods:
+  trading_hours:
+    start: 9    # 9 AM
+    end: 17     # 5 PM
+    timezone: "UTC"
+
+  high_activity_hours:
+    - 9
+    - 10
+    - 14
+    - 15
+    - 16
+    - 20
+    - 21
+
+  low_activity_hours:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+
+# Trending Detection Configuration
+trending_detection:
+  time_window_minutes: 60    # Look at last 60 minutes
+  velocity_threshold: 3      # 3+ mentions in time window = trending
+  decay_factor: 0.9          # How quickly old trends fade
+  boost_multiplier: 1.5      # Multiplier for recency
+
+# Agent Interaction Patterns
+interaction_quality:
+  high_quality_signals:
+    - thoughtful
+    - insightful
+    - detailed
+    - analysis
+    - research
+    - evidence
+    - data
+
+  low_quality_signals:
+    - spam
+    - shill
+    - bot
+    - copy
+    - paste
+    - generic
+
+# Context Weighting
+context_weights:
+  recent_tweets: 0.4         # Weight of recent community tweets
+  trending_topics: 0.3       # Weight of trending topics
+  sentiment: 0.2             # Weight of overall sentiment
+  activity_level: 0.1        # Weight of activity level
