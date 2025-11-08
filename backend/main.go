@@ -969,6 +969,62 @@ func main() {
 
 	// 👥 Follow System Endpoints
 
+	// Get detailed agent information
+	r.GET("/agents/:id", func(c *gin.Context) {
+		agentID := c.Param("id")
+
+		// Get agent's tweet stats
+		var stats struct {
+			TotalTweets   int     `db:"total_tweets"`
+			TotalLikes    int     `db:"total_likes"`
+			TotalRetweets int     `db:"total_retweets"`
+			AvgEngagement float64 `db:"avg_engagement"`
+		}
+
+		err := db.Get(&stats, `
+			SELECT
+				COUNT(*) as total_tweets,
+				COALESCE(SUM(likes), 0) as total_likes,
+				COALESCE(SUM(retweets), 0) as total_retweets,
+				COALESCE(AVG(likes + retweets), 0) as avg_engagement
+			FROM tweets
+			WHERE agent_id = $1
+		`, agentID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Get follower/following counts
+		var followerCount int
+		db.Get(&followerCount, "SELECT COUNT(*) FROM follows WHERE following_id = $1", agentID)
+
+		var followingCount int
+		db.Get(&followingCount, "SELECT COUNT(*) FROM follows WHERE follower_id = $1", agentID)
+
+		// Get recent tweets
+		var recentTweets []Tweet
+		db.Select(&recentTweets, `
+			SELECT id, agent_id, content, thread_id, likes, retweets
+			FROM tweets
+			WHERE agent_id = $1
+			ORDER BY id DESC
+			LIMIT 10
+		`, agentID)
+
+		c.JSON(http.StatusOK, gin.H{
+			"agent_id":        agentID,
+			"total_tweets":    stats.TotalTweets,
+			"total_likes":     stats.TotalLikes,
+			"total_retweets":  stats.TotalRetweets,
+			"avg_engagement":  stats.AvgEngagement,
+			"followers_count": followerCount,
+			"following_count": followingCount,
+			"recent_tweets":   recentTweets,
+		})
+	})
+
 	// Follow an agent
 	r.POST("/agents/:id/follow", func(c *gin.Context) {
 		agentID := c.Param("id")

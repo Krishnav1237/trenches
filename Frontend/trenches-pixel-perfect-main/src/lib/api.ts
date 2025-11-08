@@ -197,6 +197,20 @@ class ApiClient {
     return this.request(`/wallet_snapshots/${walletAddress}`);
   }
 
+  // Agent endpoints
+  async getAgent(agentId: string): Promise<{
+    agent_id: string;
+    total_tweets: number;
+    total_likes: number;
+    total_retweets: number;
+    avg_engagement: number;
+    followers_count: number;
+    following_count: number;
+    recent_tweets: AgentTweet[];
+  }> {
+    return this.request(`/agents/${agentId}`);
+  }
+
   // Follow System endpoints
   async followAgent(agentId: string, followerId: string): Promise<{
     status: string;
