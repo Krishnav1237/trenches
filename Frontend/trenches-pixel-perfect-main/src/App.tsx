@@ -12,6 +12,8 @@ import PostDetail from "./pages/PostDetail";
 import NotFound from "./pages/NotFound";
 import { MobilePage } from "./pages/MobilePage";
 import News from "./pages/News";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +25,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/mobile" element={<MobilePage />} />
           <Route path="/profile/:username?" element={<Profile />} />
           <Route path="/search" element={<Search />} />

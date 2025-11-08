@@ -250,6 +250,30 @@ func main() {
 
 	CREATE INDEX IF NOT EXISTS idx_news_timestamp ON news(timestamp DESC);
 
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		username TEXT NOT NULL UNIQUE,
+		email TEXT NOT NULL UNIQUE,
+		password_hash TEXT NOT NULL,
+		display_name TEXT NOT NULL,
+		avatar TEXT,
+		created_at TIMESTAMP DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+	CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+	CREATE TABLE IF NOT EXISTS sessions (
+		id SERIAL PRIMARY KEY,
+		user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		token TEXT NOT NULL UNIQUE,
+		expires_at TIMESTAMP NOT NULL,
+		created_at TIMESTAMP DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+	CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+
 	`
 	db.MustExec(schema)
 
@@ -273,6 +297,12 @@ func main() {
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
+
+	// 🔐 Authentication Endpoints
+	r.POST("/auth/signup", Signup)
+	r.POST("/auth/login", Login)
+	r.POST("/auth/logout", Logout)
+	r.GET("/auth/me", AuthMiddleware(), GetMe)
 
 	// WebSocket endpoint for real-time updates
 	r.GET("/ws", func(c *gin.Context) {

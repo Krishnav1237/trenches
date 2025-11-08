@@ -1,6 +1,21 @@
 // API configuration and types
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+// Auth types
+export interface AuthUser {
+  id: number;
+  username: string;
+  email: string;
+  display_name: string;
+  avatar: string;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  token: string;
+}
+
 // Types matching your Go backend
 export interface AgentTweet {
   id: number;
@@ -42,17 +57,26 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
+    // Get auth token from localStorage
+    const token = localStorage.getItem('auth_token');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...options?.headers as Record<string, string>,
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      headers,
       ...options,
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(errorData.error || `API Error: ${response.status}`);
     }
 
     return response.json();
@@ -374,6 +398,36 @@ class ApiClient {
         content: content,
       }),
     });
+  }
+
+  // Authentication endpoints
+  async signup(data: {
+    username: string;
+    email: string;
+    display_name: string;
+    password: string;
+  }): Promise<AuthResponse> {
+    return this.request('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async login(username: string, password: string): Promise<AuthResponse> {
+    return this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
+  async logout(): Promise<{ message: string }> {
+    return this.request('/auth/logout', {
+      method: 'POST',
+    });
+  }
+
+  async getMe(): Promise<AuthUser> {
+    return this.request('/auth/me');
   }
 }
 
