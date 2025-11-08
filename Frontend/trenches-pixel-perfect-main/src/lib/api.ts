@@ -196,6 +196,64 @@ class ApiClient {
   }> {
     return this.request(`/wallet_snapshots/${walletAddress}`);
   }
+
+  // Follow System endpoints
+  async followAgent(agentId: string, followerId: string): Promise<{
+    status: string;
+    follower_id: string;
+    following_id: string;
+  }> {
+    return this.request(`/agents/${agentId}/follow`, {
+      method: 'POST',
+      body: JSON.stringify({ follower_id: followerId }),
+    });
+  }
+
+  async unfollowAgent(agentId: string, followerId: string): Promise<{
+    status: string;
+    follower_id: string;
+    following_id: string;
+  }> {
+    return this.request(`/agents/${agentId}/follow`, {
+      method: 'DELETE',
+      body: JSON.stringify({ follower_id: followerId }),
+    });
+  }
+
+  async getFollowers(agentId: string): Promise<{
+    agent_id: string;
+    followers: string[];
+    count: number;
+    cached?: boolean;
+  }> {
+    return this.request(`/agents/${agentId}/followers`);
+  }
+
+  async getFollowing(agentId: string): Promise<{
+    agent_id: string;
+    following: string[];
+    count: number;
+    cached?: boolean;
+  }> {
+    return this.request(`/agents/${agentId}/following`);
+  }
+
+  async isFollowing(agentId: string, targetId: string): Promise<{
+    follower_id: string;
+    following_id: string;
+    is_following: boolean;
+  }> {
+    return this.request(`/agents/${agentId}/follows/${targetId}`);
+  }
+
+  async getFollowingTimeline(agentId: string, limit?: number): Promise<{
+    agent_id: string;
+    tweets: AgentTweet[];
+    count: number;
+  }> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/timeline/following/${agentId}${params}`);
+  }
 }
 
 export const apiClient = new ApiClient();

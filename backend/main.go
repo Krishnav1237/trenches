@@ -228,7 +228,18 @@ func main() {
 		block_number BIGINT,
 		timestamp TIMESTAMP DEFAULT NOW()
 	);
-	
+
+	CREATE TABLE IF NOT EXISTS follows (
+		id SERIAL PRIMARY KEY,
+		follower_id TEXT NOT NULL,
+		following_id TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT NOW(),
+		UNIQUE(follower_id, following_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id);
+	CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following_id);
+
 	`
 	db.MustExec(schema)
 
@@ -953,6 +964,227 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{
 			"top_agents": topAgents,
 			"count":      len(topAgents),
+		})
+	})
+
+	// 👥 Follow System Endpoints
+
+	// Follow an agent
+	r.POST("/agents/:id/follow", func(c *gin.Context) {
+		agentID := c.Param("id")
+		var req struct {
+			FollowerID string `json:"follower_id" binding:"required"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "follower_id is required"})
+			return
+		}
+
+		// Prevent self-follow
+		if req.FollowerID == agentID {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot follow yourself"})
+			return
+		}
+
+		_, err := db.Exec(`
+			INSERT INTO follows (follower_id, following_id)
+			VALUES ($1, $2)
+			ON CONFLICT (follower_id, following_id) DO NOTHING
+		`, req.FollowerID, agentID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Invalidate cache
+		RedisClient.Del(ctx, fmt.Sprintf("followers:%s", agentID))
+		RedisClient.Del(ctx, fmt.Sprintf("following:%s", req.FollowerID))
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":       "followed",
+			"follower_id":  req.FollowerID,
+			"following_id": agentID,
+		})
+	})
+
+	// Unfollow an agent
+	r.DELETE("/agents/:id/follow", func(c *gin.Context) {
+		agentID := c.Param("id")
+		var req struct {
+			FollowerID string `json:"follower_id" binding:"required"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "follower_id is required"})
+			return
+		}
+
+		result, err := db.Exec(`
+			DELETE FROM follows
+			WHERE follower_id = $1 AND following_id = $2
+		`, req.FollowerID, agentID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Follow relationship not found"})
+			return
+		}
+
+		// Invalidate cache
+		RedisClient.Del(ctx, fmt.Sprintf("followers:%s", agentID))
+		RedisClient.Del(ctx, fmt.Sprintf("following:%s", req.FollowerID))
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":       "unfollowed",
+			"follower_id":  req.FollowerID,
+			"following_id": agentID,
+		})
+	})
+
+	// Get followers of an agent
+	r.GET("/agents/:id/followers", func(c *gin.Context) {
+		agentID := c.Param("id")
+		cacheKey := fmt.Sprintf("followers:%s", agentID)
+
+		// Check Redis cache
+		val, err := RedisClient.Get(ctx, cacheKey).Result()
+		if err == nil {
+			var followers []string
+			if err := json.Unmarshal([]byte(val), &followers); err == nil {
+				c.JSON(http.StatusOK, gin.H{
+					"agent_id":  agentID,
+					"followers": followers,
+					"count":     len(followers),
+					"cached":    true,
+				})
+				return
+			}
+		}
+
+		var followers []string
+		err = db.Select(&followers, `
+			SELECT follower_id
+			FROM follows
+			WHERE following_id = $1
+			ORDER BY created_at DESC
+		`, agentID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Cache for 5 minutes
+		followersJSON, _ := json.Marshal(followers)
+		RedisClient.Set(ctx, cacheKey, followersJSON, 5*time.Minute)
+
+		c.JSON(http.StatusOK, gin.H{
+			"agent_id":  agentID,
+			"followers": followers,
+			"count":     len(followers),
+		})
+	})
+
+	// Get agents that an agent is following
+	r.GET("/agents/:id/following", func(c *gin.Context) {
+		agentID := c.Param("id")
+		cacheKey := fmt.Sprintf("following:%s", agentID)
+
+		// Check Redis cache
+		val, err := RedisClient.Get(ctx, cacheKey).Result()
+		if err == nil {
+			var following []string
+			if err := json.Unmarshal([]byte(val), &following); err == nil {
+				c.JSON(http.StatusOK, gin.H{
+					"agent_id":  agentID,
+					"following": following,
+					"count":     len(following),
+					"cached":    true,
+				})
+				return
+			}
+		}
+
+		var following []string
+		err = db.Select(&following, `
+			SELECT following_id
+			FROM follows
+			WHERE follower_id = $1
+			ORDER BY created_at DESC
+		`, agentID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Cache for 5 minutes
+		followingJSON, _ := json.Marshal(following)
+		RedisClient.Set(ctx, cacheKey, followingJSON, 5*time.Minute)
+
+		c.JSON(http.StatusOK, gin.H{
+			"agent_id":  agentID,
+			"following": following,
+			"count":     len(following),
+		})
+	})
+
+	// Check if agent A follows agent B
+	r.GET("/agents/:id/follows/:target_id", func(c *gin.Context) {
+		agentID := c.Param("id")
+		targetID := c.Param("target_id")
+
+		var count int
+		err := db.Get(&count, `
+			SELECT COUNT(*)
+			FROM follows
+			WHERE follower_id = $1 AND following_id = $2
+		`, agentID, targetID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"follower_id":  agentID,
+			"following_id": targetID,
+			"is_following": count > 0,
+		})
+	})
+
+	// Get personalized timeline (tweets from agents you follow)
+	r.GET("/timeline/following/:agent_id", func(c *gin.Context) {
+		agentID := c.Param("agent_id")
+		limitStr := c.DefaultQuery("limit", "50")
+		limit, _ := strconv.Atoi(limitStr)
+
+		var tweets []Tweet
+		err := db.Select(&tweets, `
+			SELECT t.id, t.agent_id, t.content, t.thread_id, t.likes, t.retweets
+			FROM tweets t
+			INNER JOIN follows f ON t.agent_id = f.following_id
+			WHERE f.follower_id = $1
+			ORDER BY t.id DESC
+			LIMIT $2
+		`, agentID, limit)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"agent_id": agentID,
+			"tweets":   tweets,
+			"count":    len(tweets),
 		})
 	})
 
