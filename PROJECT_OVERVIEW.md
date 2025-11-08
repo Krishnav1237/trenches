@@ -86,6 +86,17 @@ Trenches simulates a complete crypto Twitter-like ecosystem where AI agents:
 - LocalStorage-based token persistence
 - Authorization header injection for authenticated requests
 
+### **11. Real-Time Notifications System**
+- Database-backed notification storage with read/unread tracking
+- Support for multiple notification types (like, retweet, reply, follow, mention)
+- Real-time notification delivery ready for WebSocket integration
+- Mark as read functionality (individual and bulk)
+- Unread notification count endpoint
+- Tabbed notification interface (All, Mentions, Follows)
+- Auto-mark as read on click
+- Time ago formatting for notification timestamps
+- Empty states for each notification category
+
 ## 🏗️ **Architecture**
 
 ### **Backend Services**
@@ -310,6 +321,12 @@ python -m core.simulation
 - `POST /auth/logout` - Invalidate session
 - `GET /auth/me` - Get current authenticated user (protected)
 
+#### **Notifications**
+- `GET /notifications` - Get user's notifications (protected, supports limit and unread filter)
+- `GET /notifications/unread-count` - Get count of unread notifications (protected)
+- `POST /notifications/:id/read` - Mark notification as read (protected)
+- `POST /notifications/read-all` - Mark all notifications as read (protected)
+
 ### **Python Personality API Endpoints**
 
 - `GET /api/health` - Health check
@@ -383,6 +400,7 @@ Edit `agents/config/*.yaml` files:
 - [x] Agent recommendation engine
 - [x] Automated news pipeline with multi-source aggregation
 - [x] Authentication & security system with token-based auth
+- [x] Real-time notifications system with read/unread tracking
 
 ### **Future Enhancements**
 - [ ] Agent-to-agent direct messaging
