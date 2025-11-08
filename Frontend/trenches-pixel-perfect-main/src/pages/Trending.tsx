@@ -3,8 +3,10 @@ import { PostCard } from '@/components/Post/PostCard';
 import { UserCard } from '@/components/User/UserCard';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, Hash, Users, Zap, Globe, MapPin } from 'lucide-react';
+import { TrendingUp, Hash, Users, Zap, Globe, MapPin, Loader2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { apiClient } from '@/lib/api';
+import { useEffect, useState } from 'react';
 import pfp4 from '@/assets/pfp4.png';
 import pfp5 from '@/assets/pfp5.png';
 import pfp6 from '@/assets/pfp6.png';
@@ -197,7 +199,36 @@ const LocationCard = ({ location }: { location: TrendingLocation }) => (
 
 const Trending = () => {
   const { posts } = useStore();
-  
+
+  // State for real backend data
+  const [trendingTokens, setTrendingTokens] = useState<Array<{ token: string; count: number; avg_likes: number }>>([]);
+  const [topAgents, setTopAgents] = useState<Array<any>>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch trending data from backend
+  useEffect(() => {
+    const fetchTrendingData = async () => {
+      try {
+        setLoading(true);
+        const [trending, agents] = await Promise.all([
+          apiClient.getTrending(10),
+          apiClient.getTopAgents(10),
+        ]);
+        setTrendingTokens(trending.trending);
+        setTopAgents(agents.top_agents);
+      } catch (error) {
+        console.error('Failed to fetch trending data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrendingData();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchTrendingData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Get trending posts (most liked/reposted)
   const trendingPosts = [...posts]
     .sort((a, b) => (b.likes + b.reposts) - (a.likes + a.reposts))
@@ -261,14 +292,52 @@ const Trending = () => {
         <TabsContent value="topics" className="mt-0">
           <div className="p-4 space-y-1">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Trending Topics</h2>
-              <Button variant="ghost" size="sm" className="text-trenches-green">
-                See all
-              </Button>
+              <h2 className="text-lg font-bold">Trending Crypto Tokens</h2>
+              {loading && <Loader2 className="animate-spin text-trenches-green" size={20} />}
             </div>
-            {trendingTopics.map((topic) => (
-              <TrendingCard key={topic.id} topic={topic} />
-            ))}
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading trending tokens...
+              </div>
+            ) : trendingTokens.length > 0 ? (
+              trendingTokens.map((token, index) => (
+                <div
+                  key={token.token}
+                  className="hover:bg-secondary p-4 rounded-lg cursor-pointer transition-all duration-200 group"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Hash size={16} className="text-trenches-green" />
+                        <span className="font-bold text-lg group-hover:text-trenches-green transition-colors">
+                          ${token.token}
+                        </span>
+                        <span className="text-xs bg-trenches-green text-white px-2 py-1 rounded-full">
+                          #{index + 1}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">Cryptocurrency</p>
+                      <div className="flex gap-4 text-sm">
+                        <span className="text-foreground">
+                          {token.count} mentions
+                        </span>
+                        <span className="text-muted-foreground">
+                          {token.avg_likes.toFixed(1)} avg likes
+                        </span>
+                      </div>
+                    </div>
+                    <TrendingUp
+                      size={20}
+                      className="text-trenches-green opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No trending tokens yet. Start the simulation to see trending data!
+              </div>
+            )}
           </div>
         </TabsContent>
         
@@ -287,14 +356,55 @@ const Trending = () => {
         <TabsContent value="people" className="mt-0 p-4">
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Suggested for you</h2>
-              <Button variant="ghost" size="sm" className="text-trenches-green">
-                See all
-              </Button>
+              <h2 className="text-lg font-bold">Top Performing Agents</h2>
+              {loading && <Loader2 className="animate-spin text-trenches-green" size={20} />}
             </div>
-            {suggestedUsers.map((user) => (
-              <UserCard key={user.id} user={user} />
-            ))}
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading top agents...
+              </div>
+            ) : topAgents.length > 0 ? (
+              topAgents.map((agent, index) => (
+                <div
+                  key={agent.agent_id}
+                  className="hover:bg-secondary p-4 rounded-lg cursor-pointer transition-all duration-200"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-2xl font-bold text-muted-foreground">
+                          #{index + 1}
+                        </span>
+                        <div>
+                          <h3 className="font-bold text-lg">@{agent.agent_id}</h3>
+                          <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                            <span>{agent.total_tweets} tweets</span>
+                            <span>{agent.total_likes} likes</span>
+                            <span>{agent.total_retweets} RTs</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2 bg-trenches-green-light p-2 rounded">
+                        <span className="text-sm font-semibold text-trenches-green">
+                          Avg Engagement: {agent.avg_engagement.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-trenches-green text-trenches-green hover:bg-trenches-green hover:text-white"
+                    >
+                      Follow
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No agent data yet. Run the simulation to populate data!
+              </div>
+            )}
           </div>
         </TabsContent>
         

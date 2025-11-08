@@ -732,6 +732,190 @@ func main() {
 		})
 	})
 
+	// 🔍 Advanced Tweet Search
+	r.GET("/search/tweets", func(c *gin.Context) {
+		agent := c.Query("agent")        // Filter by agent_id
+		keyword := c.Query("keyword")    // Search in content
+		token := c.Query("token")        // Filter by token mention
+		minLikes := c.Query("min_likes") // Minimum likes
+		limitStr := c.DefaultQuery("limit", "50")
+
+		limit, _ := strconv.Atoi(limitStr)
+		if limit > 100 {
+			limit = 100
+		}
+
+		query := "SELECT id, agent_id, content, thread_id, likes, retweets FROM tweets WHERE 1=1"
+		args := []interface{}{}
+		argPos := 1
+
+		// Add filters
+		if agent != "" {
+			query += fmt.Sprintf(" AND agent_id = $%d", argPos)
+			args = append(args, agent)
+			argPos++
+		}
+
+		if keyword != "" {
+			query += fmt.Sprintf(" AND content ILIKE $%d", argPos)
+			args = append(args, "%"+keyword+"%")
+			argPos++
+		}
+
+		if token != "" {
+			query += fmt.Sprintf(" AND (content ILIKE $%d OR content ILIKE $%d)", argPos, argPos+1)
+			args = append(args, "%"+token+"%", "%$"+token+"%")
+			argPos += 2
+		}
+
+		if minLikes != "" {
+			minLikesInt, _ := strconv.Atoi(minLikes)
+			query += fmt.Sprintf(" AND likes >= $%d", argPos)
+			args = append(args, minLikesInt)
+			argPos++
+		}
+
+		query += fmt.Sprintf(" ORDER BY id DESC LIMIT $%d", argPos)
+		args = append(args, limit)
+
+		var tweets []Tweet
+		if err := db.Select(&tweets, query, args...); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"tweets": tweets,
+			"count":  len(tweets),
+		})
+	})
+
+	// 🔥 Trending Tokens Endpoint
+	r.GET("/trending", func(c *gin.Context) {
+		limitStr := c.DefaultQuery("limit", "10")
+		limit, _ := strconv.Atoi(limitStr)
+
+		// Get top mentioned tokens from recent tweets (last 1000 tweets)
+		type TokenCount struct {
+			Token   string `db:"token"`
+			Count   int    `db:"count"`
+			AvgLikes float64 `db:"avg_likes"`
+		}
+
+		// Common crypto tokens to search for
+		tokens := []string{"BTC", "ETH", "SOL", "ADA", "DOT", "DOGE", "SHIB", "PEPE", "XRP", "BNB", "AVAX", "MATIC"}
+
+		var trending []TokenCount
+		for _, token := range tokens {
+			var count TokenCount
+			err := db.Get(&count, `
+				SELECT
+					$1 as token,
+					COUNT(*) as count,
+					COALESCE(AVG(likes), 0) as avg_likes
+				FROM tweets
+				WHERE content ILIKE $2 OR content ILIKE $3
+				LIMIT 1
+			`, token, "%"+token+"%", "%$"+token+"%")
+
+			if err == nil && count.Count > 0 {
+				trending = append(trending, count)
+			}
+		}
+
+		// Sort by count desc
+		for i := 0; i < len(trending); i++ {
+			for j := i + 1; j < len(trending); j++ {
+				if trending[j].Count > trending[i].Count {
+					trending[i], trending[j] = trending[j], trending[i]
+				}
+			}
+		}
+
+		// Limit results
+		if len(trending) > limit {
+			trending = trending[:limit]
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"trending": trending,
+			"count":    len(trending),
+		})
+	})
+
+	// 📊 Agent Search
+	r.GET("/search/agents", func(c *gin.Context) {
+		query := c.Query("q")           // Search query
+		limitStr := c.DefaultQuery("limit", "20")
+		limit, _ := strconv.Atoi(limitStr)
+
+		var profiles []Profile
+		if query != "" {
+			err := db.Select(&profiles, `
+				SELECT id, username, avatar, metadata
+				FROM profiles
+				WHERE username ILIKE $1
+				ORDER BY username
+				LIMIT $2
+			`, "%"+query+"%", limit)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		} else {
+			// Return all if no query
+			err := db.Select(&profiles, "SELECT id, username, avatar, metadata FROM profiles ORDER BY username LIMIT $1", limit)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"agents": profiles,
+			"count":  len(profiles),
+		})
+	})
+
+	// 🎯 Top Agents (by engagement)
+	r.GET("/agents/top", func(c *gin.Context) {
+		limitStr := c.DefaultQuery("limit", "10")
+		limit, _ := strconv.Atoi(limitStr)
+
+		type AgentStats struct {
+			AgentID      string  `db:"agent_id" json:"agent_id"`
+			TotalTweets  int     `db:"total_tweets" json:"total_tweets"`
+			TotalLikes   int     `db:"total_likes" json:"total_likes"`
+			TotalRetweets int    `db:"total_retweets" json:"total_retweets"`
+			AvgEngagement float64 `db:"avg_engagement" json:"avg_engagement"`
+		}
+
+		var topAgents []AgentStats
+		err := db.Select(&topAgents, `
+			SELECT
+				agent_id,
+				COUNT(*) as total_tweets,
+				SUM(likes) as total_likes,
+				SUM(retweets) as total_retweets,
+				AVG(likes + retweets) as avg_engagement
+			FROM tweets
+			GROUP BY agent_id
+			ORDER BY avg_engagement DESC
+			LIMIT $1
+		`, limit)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"top_agents": topAgents,
+			"count":      len(topAgents),
+		})
+	})
+
 	// Start server
 	r.Run(":8080")
 }

@@ -118,6 +118,84 @@ class ApiClient {
   async ping(): Promise<{ message: string }> {
     return this.request<{ message: string }>('/ping');
   }
+
+  // Search endpoints
+  async searchTweets(params: {
+    agent?: string;
+    keyword?: string;
+    token?: string;
+    minLikes?: number;
+    limit?: number;
+  }): Promise<{ tweets: AgentTweet[]; count: number }> {
+    const queryParams = new URLSearchParams();
+    if (params.agent) queryParams.append('agent', params.agent);
+    if (params.keyword) queryParams.append('keyword', params.keyword);
+    if (params.token) queryParams.append('token', params.token);
+    if (params.minLikes !== undefined) queryParams.append('min_likes', params.minLikes.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+
+    const queryString = queryParams.toString();
+    return this.request<{ tweets: AgentTweet[]; count: number }>(
+      `/search/tweets${queryString ? `?${queryString}` : ''}`
+    );
+  }
+
+  async searchAgents(query?: string, limit?: number): Promise<{ agents: AgentProfile[]; count: number }> {
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (limit) params.append('limit', limit.toString());
+
+    const queryString = params.toString();
+    return this.request<{ agents: AgentProfile[]; count: number }>(
+      `/search/agents${queryString ? `?${queryString}` : ''}`
+    );
+  }
+
+  // Trending endpoints
+  async getTrending(limit?: number): Promise<{
+    trending: Array<{ token: string; count: number; avg_likes: number }>;
+    count: number;
+  }> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/trending${params}`);
+  }
+
+  async getTopAgents(limit?: number): Promise<{
+    top_agents: Array<{
+      agent_id: string;
+      total_tweets: number;
+      total_likes: number;
+      total_retweets: number;
+      avg_engagement: number;
+    }>;
+    count: number;
+  }> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/agents/top${params}`);
+  }
+
+  // News endpoints
+  async getNews(limit?: number): Promise<{
+    news: Array<{ source: string; title: string; url: string; timestamp: string }>;
+    count: number;
+  }> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/news${params}`);
+  }
+
+  // Wallet endpoints
+  async getWalletSnapshots(walletAddress: string): Promise<{
+    snapshots: Array<{
+      id: number;
+      wallet_address: string;
+      balance: number;
+      block_number: number;
+      timestamp: string;
+    }>;
+    count: number;
+  }> {
+    return this.request(`/wallet_snapshots/${walletAddress}`);
+  }
 }
 
 export const apiClient = new ApiClient();
