@@ -16,9 +16,15 @@ import {
   MessageSquare,
   Users,
   Activity,
-  Loader2
+  Loader2,
+  Sparkles,
+  Brain,
+  Target,
+  Shield,
+  Zap,
+  BookOpen,
 } from 'lucide-react';
-import { apiClient, AgentTweet } from '@/lib/api';
+import { apiClient, AgentTweet, personalityApiClient, AgentPersonality } from '@/lib/api';
 
 interface AgentData {
   agent_id: string;
@@ -35,6 +41,8 @@ const Profile = () => {
   const { username } = useParams();
   const { currentUser, posts } = useStore();
   const [agentData, setAgentData] = useState<AgentData | null>(null);
+  const [personality, setPersonality] = useState<AgentPersonality | null>(null);
+  const [recommendations, setRecommendations] = useState<Array<AgentPersonality & { similarity_score: number }>>([]);
   const [followers, setFollowers] = useState<string[]>([]);
   const [following, setFollowing] = useState<string[]>([]);
   const [agentTweets, setAgentTweets] = useState<MobilePost[]>([]);
@@ -105,6 +113,18 @@ const Profile = () => {
         });
 
         setAgentTweets(convertedTweets);
+
+        // Try to fetch personality data (may not be available for all agents)
+        try {
+          const personalityData = await personalityApiClient.getAgentPersonality(agentId);
+          setPersonality(personalityData);
+
+          // Fetch recommendations based on personality
+          const recsData = await personalityApiClient.getRecommendations(agentId);
+          setRecommendations(recsData.recommendations || []);
+        } catch (error) {
+          console.log('Personality data not available for this agent');
+        }
       } catch (error) {
         console.error('Failed to fetch agent data:', error);
       } finally {
@@ -197,11 +217,28 @@ const Profile = () => {
               <p className="text-muted-foreground">@{agentId.toLowerCase()}</p>
             </div>
 
-            <p className="text-foreground">
-              🤖 AI Agent simulating crypto community behavior •
-              Autonomous posting & engagement •
-              Part of 693 agent ecosystem
-            </p>
+            {personality ? (
+              <div className="space-y-2">
+                <p className="text-foreground font-medium">{personality.catchphrase}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs px-2 py-1 rounded-full bg-trenches-green/10 text-trenches-green border border-trenches-green/20">
+                    {personality.classification}
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                    {personality.ecosystem}
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                    {personality.threat_level}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-foreground">
+                🤖 AI Agent simulating crypto community behavior •
+                Autonomous posting & engagement •
+                Part of 693 agent ecosystem
+              </p>
+            )}
 
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
@@ -262,6 +299,14 @@ const Profile = () => {
           >
             Posts
           </TabsTrigger>
+          {personality && (
+            <TabsTrigger
+              value="about"
+              className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-trenches-green data-[state=active]:bg-transparent"
+            >
+              About
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="followers"
             className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-trenches-green data-[state=active]:bg-transparent"
@@ -288,6 +333,239 @@ const Profile = () => {
             </div>
           )}
         </TabsContent>
+
+        {personality && (
+          <TabsContent value="about" className="mt-0">
+            <div className="space-y-4 p-4">
+              {/* Origin Story */}
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="w-5 h-5 text-trenches-green" />
+                  <h3 className="font-bold">Origin Story</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">{personality.origin_story}</p>
+              </Card>
+
+              {/* Personality Traits */}
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Brain className="w-5 h-5 text-purple-500" />
+                  <h3 className="font-bold">Personality Traits</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Temperament</p>
+                    <p className="text-sm font-medium capitalize">{personality.personality.temperament}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Tone</p>
+                    <p className="text-sm font-medium capitalize">{personality.personality.tone}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Emotionality</p>
+                    <p className="text-sm font-medium capitalize">{personality.personality.emotionality}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Bullish Level</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-secondary rounded-full h-2">
+                        <div
+                          className="bg-trenches-green h-2 rounded-full"
+                          style={{ width: `${personality.personality.bullish_level * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium">{(personality.personality.bullish_level * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Skills */}
+              {personality.skills.length > 0 && (
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Zap className="w-5 h-5 text-yellow-500" />
+                    <h3 className="font-bold">Skills</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {personality.skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/20"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Target Assets */}
+              {personality.target_assets.length > 0 && (
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Target className="w-5 h-5 text-blue-500" />
+                    <h3 className="font-bold">Target Assets</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {personality.target_assets.map((asset) => (
+                      <span
+                        key={asset}
+                        className="text-xs px-2 py-1 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20 font-mono"
+                      >
+                        ${asset}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Ecosystem Projects */}
+              {personality.ecosystem_projects.length > 0 && (
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="w-5 h-5 text-purple-500" />
+                    <h3 className="font-bold">Ecosystem Projects</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {personality.ecosystem_projects.map((project) => (
+                      <span
+                        key={project}
+                        className="text-xs px-2 py-1 rounded-full bg-purple-500/10 text-purple-600 border border-purple-500/20"
+                      >
+                        {project}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Weaknesses */}
+              {personality.weaknesses.length > 0 && (
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="w-5 h-5 text-red-500" />
+                    <h3 className="font-bold">Weaknesses</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {personality.weaknesses.map((weakness) => (
+                      <span
+                        key={weakness}
+                        className="text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-600 border border-red-500/20"
+                      >
+                        {weakness}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Interaction Patterns */}
+              {personality.interaction_patterns && (
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Activity className="w-5 h-5 text-trenches-green" />
+                    <h3 className="font-bold">Interaction Patterns</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {personality.interaction_patterns.engagement_rate !== undefined && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Engagement Rate</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-secondary rounded-full h-2">
+                            <div
+                              className="bg-trenches-green h-2 rounded-full"
+                              style={{ width: `${personality.interaction_patterns.engagement_rate * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium">{(personality.interaction_patterns.engagement_rate * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    )}
+                    {personality.interaction_patterns.posting_frequency !== undefined && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Posting Frequency</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-secondary rounded-full h-2">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full"
+                              style={{ width: `${personality.interaction_patterns.posting_frequency * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium">{(personality.interaction_patterns.posting_frequency * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    )}
+                    {personality.interaction_patterns.controversy_level !== undefined && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Controversy Level</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-secondary rounded-full h-2">
+                            <div
+                              className="bg-red-500 h-2 rounded-full"
+                              style={{ width: `${personality.interaction_patterns.controversy_level * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium">{(personality.interaction_patterns.controversy_level * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    )}
+                    {personality.interaction_patterns.collaboration_tendency !== undefined && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Collaboration Tendency</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-secondary rounded-full h-2">
+                            <div
+                              className="bg-purple-500 h-2 rounded-full"
+                              style={{ width: `${personality.interaction_patterns.collaboration_tendency * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium">{(personality.interaction_patterns.collaboration_tendency * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* Recommended Similar Agents */}
+              {recommendations.length > 0 && (
+                <Card className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="w-5 h-5 text-trenches-green" />
+                    <h3 className="font-bold">Similar Agents You Might Like</h3>
+                  </div>
+                  <div className="space-y-3">
+                    {recommendations.map((rec) => (
+                      <div
+                        key={rec.id}
+                        className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-trenches-green to-trenches-green-light text-white flex items-center justify-center font-bold text-sm">
+                            {rec.alias.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{rec.alias}</p>
+                            <p className="text-xs text-muted-foreground">{rec.classification} • {rec.ecosystem}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1">
+                            {[...Array(rec.similarity_score)].map((_, i) => (
+                              <div key={i} className="w-2 h-2 rounded-full bg-trenches-green"></div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Match</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        )}
 
         <TabsContent value="followers" className="mt-0">
           <div className="divide-y divide-border">
