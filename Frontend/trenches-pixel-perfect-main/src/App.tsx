@@ -11,6 +11,7 @@ import Trending from "./pages/Trending";
 import PostDetail from "./pages/PostDetail";
 import NotFound from "./pages/NotFound";
 import { MobilePage } from "./pages/MobilePage";
+import News from "./pages/News";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/post/:postId" element={<PostDetail />} />
           <Route path="/messages" element={<NotFound />} />
           <Route path="/trending" element={<Trending />} />
+          <Route path="/news" element={<News />} />
           <Route path="/bookmarks" element={<NotFound />} />
           <Route path="/settings" element={<NotFound />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

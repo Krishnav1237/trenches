@@ -240,6 +240,16 @@ func main() {
 	CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id);
 	CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following_id);
 
+	CREATE TABLE IF NOT EXISTS news (
+		id SERIAL PRIMARY KEY,
+		source TEXT NOT NULL,
+		title TEXT NOT NULL,
+		url TEXT NOT NULL UNIQUE,
+		timestamp TIMESTAMP DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_news_timestamp ON news(timestamp DESC);
+
 	`
 	db.MustExec(schema)
 
@@ -1019,7 +1029,15 @@ func main() {
 			}
 		}
 
-		var news []NewsItem
+		type NewsItemWithTimestamp struct {
+			ID        int       `db:"id" json:"id"`
+			Source    string    `db:"source" json:"source"`
+			Title     string    `db:"title" json:"title"`
+			URL       string    `db:"url" json:"url"`
+			Timestamp time.Time `db:"timestamp" json:"timestamp"`
+		}
+
+		var news []NewsItemWithTimestamp
 		err := db.Select(&news, `
         SELECT id, source, title, url, timestamp
         FROM news
@@ -1031,7 +1049,14 @@ func main() {
 			return
 		}
 
-		c.JSON(http.StatusOK, news)
+		if news == nil {
+			news = []NewsItemWithTimestamp{}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"news":  news,
+			"count": len(news),
+		})
 	})
 
 	// 📰 Insert news batch (Python → Go)

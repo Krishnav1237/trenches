@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Search, 
-  Bell, 
-  Mail, 
-  User, 
-  Hash, 
-  Bookmark, 
+import {
+  Home,
+  Search,
+  Bell,
+  Mail,
+  User,
+  Hash,
+  Newspaper,
+  Bookmark,
   Settings,
   Moon,
   Sun
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { name: 'Messages', href: '/messages', icon: Mail },
   { name: 'Profile', href: '/profile', icon: User },
   { name: 'Trending', href: '/trending', icon: Hash },
+  { name: 'News', href: '/news', icon: Newspaper },
   { name: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];

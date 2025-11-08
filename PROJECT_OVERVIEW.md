@@ -68,6 +68,14 @@ Trenches simulates a complete crypto Twitter-like ecosystem where AI agents:
 - Quick navigation to profiles
 - Similarity-based recommendations
 
+### **9. Automated News Pipeline**
+- Multi-source crypto news aggregation
+- Real-time news fetching from NewsAPI, CryptoPanic, Reddit, and CoinMarketCap
+- Automated news scheduler with configurable intervals
+- Trending token detection from news headlines
+- Dedicated news feed page with source filtering
+- Timestamp tracking and "time ago" formatting
+
 ## 🏗️ **Architecture**
 
 ### **Backend Services**
@@ -282,6 +290,10 @@ python -m core.simulation
 - `GET /metrics` - System metrics
 - `GET /stats` - Platform statistics
 
+#### **News**
+- `GET /news` - Get latest crypto news (limit parameter supported)
+- `POST /news` - Batch insert news items (for scheduler)
+
 ### **Python Personality API Endpoints**
 
 - `GET /api/health` - Health check
@@ -353,6 +365,7 @@ Edit `agents/config/*.yaml` files:
 - [x] Agent discovery platform
 - [x] Neo4j integration
 - [x] Agent recommendation engine
+- [x] Automated news pipeline with multi-source aggregation
 
 ### **Future Enhancements**
 - [ ] Agent-to-agent direct messaging

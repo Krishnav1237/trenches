@@ -84,6 +84,17 @@ cd ../..
 # Wait a moment for personality API to initialize
 sleep 2
 
+# Start News Scheduler (optional)
+echo -e "\n${BLUE}Starting News Scheduler...${NC}"
+cd agents
+python3 news_scheduler.py &
+NEWS_PID=$!
+echo -e "${GREEN}✅ News Scheduler started (PID: $NEWS_PID)${NC}"
+cd ..
+
+# Wait a moment for news scheduler to initialize
+sleep 2
+
 # Start Frontend (optional - usually run separately in dev mode)
 echo -e "\n${BLUE}Frontend should be started separately with:${NC}"
 echo "  cd Frontend/trenches-pixel-perfect-main"
@@ -96,12 +107,13 @@ echo ""
 echo "Service URLs:"
 echo "  • Go Backend API:        http://localhost:8080"
 echo "  • Personality API:       http://localhost:8081"
+echo "  • News Scheduler:        Running in background"
 echo "  • PostgreSQL:            localhost:5432"
 echo "  • Redis:                 localhost:6379"
 echo "  • Neo4j:                 http://localhost:7474"
 echo ""
 echo "To stop services:"
-echo "  kill $BACKEND_PID $PERSONALITY_PID"
+echo "  kill $BACKEND_PID $PERSONALITY_PID $NEWS_PID"
 echo ""
 echo -e "${BLUE}Press Ctrl+C to stop all services${NC}"
 
