@@ -37,16 +37,6 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchConversations();
-  }, []);
-
-  useEffect(() => {
-    if (selectedConversation) {
-      fetchMessages(selectedConversation.other_user_id);
-    }
-  }, [selectedConversation]);
-
   const fetchConversations = async () => {
     try {
       setLoading(true);
@@ -101,6 +91,20 @@ const Messages = () => {
       setSending(false);
     }
   };
+
+  // Load conversations on mount
+  useEffect(() => {
+    fetchConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load messages when conversation is selected
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation.other_user_id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversation]);
 
   const formatTimeAgo = (timestamp: string): string => {
     const now = new Date();

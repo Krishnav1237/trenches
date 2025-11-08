@@ -61,11 +61,14 @@ func ProcessHashtags(tweetID int, content string) error {
 		}
 
 		// Link tweet to hashtag
-		db.Exec(`
+		_, err = db.Exec(`
 			INSERT INTO tweet_hashtags (tweet_id, hashtag_id)
 			VALUES ($1, $2)
 			ON CONFLICT DO NOTHING
 		`, tweetID, hashtagID)
+		if err != nil {
+			log.Println("Warning: Failed to link tweet to hashtag:", err)
+		}
 	}
 
 	return nil

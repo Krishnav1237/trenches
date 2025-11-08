@@ -26,13 +26,14 @@ type Message struct {
 }
 
 type ConversationWithUser struct {
-	ID            int       `json:"id"`
-	OtherUserID   int       `json:"other_user_id"`
-	OtherUsername string    `json:"other_username"`
-	OtherAvatar   string    `json:"other_avatar"`
-	LastMessage   string    `json:"last_message"`
-	LastMessageAt time.Time `json:"last_message_at"`
-	UnreadCount   int       `json:"unread_count"`
+	ID               int       `json:"conversation_id"`
+	OtherUserID      int       `json:"other_user_id"`
+	OtherUsername    string    `json:"other_username"`
+	OtherDisplayName string    `json:"other_display_name"`
+	OtherAvatar      string    `json:"other_avatar"`
+	LastMessage      string    `json:"last_message"`
+	LastMessageAt    time.Time `json:"last_message_at"`
+	UnreadCount      int       `json:"unread_count"`
 }
 
 type MessageWithSender struct {
@@ -119,15 +120,18 @@ func SendMessage(c *gin.Context) {
 	}
 
 	// Update conversation last_message_at
-	db.Exec(`
+	_, err = db.Exec(`
 		UPDATE conversations
 		SET last_message_at = NOW()
 		WHERE id = $1
 	`, conv.ID)
+	if err != nil {
+		log.Println("Warning: Failed to update conversation timestamp:", err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":         message,
-		"conversation_id": conv.ID,
+		"message":    "Message sent",
+		"message_id": message.ID,
 	})
 }
 
@@ -151,6 +155,10 @@ func GetConversations(c *gin.Context) {
 				WHEN c.user1_id = $1 THEN u2.username
 				ELSE u1.username
 			END as other_username,
+			CASE
+				WHEN c.user1_id = $1 THEN u2.display_name
+				ELSE u1.display_name
+			END as other_display_name,
 			CASE
 				WHEN c.user1_id = $1 THEN u2.avatar
 				ELSE u1.avatar
@@ -265,11 +273,14 @@ func GetMessages(c *gin.Context) {
 	}
 
 	// Mark messages as read
-	db.Exec(`
+	_, err = db.Exec(`
 		UPDATE messages
 		SET read = true
 		WHERE conversation_id = $1 AND sender_id != $2 AND read = false
 	`, conversationID, user.ID)
+	if err != nil {
+		log.Println("Warning: Failed to mark messages as read:", err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"messages": messages,

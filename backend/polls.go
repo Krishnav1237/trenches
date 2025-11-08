@@ -243,13 +243,16 @@ func VotePoll(c *gin.Context) {
 	}
 
 	// Update vote counts
-	db.Exec(`
+	_, err = db.Exec(`
 		UPDATE poll_options
 		SET vote_count = (
 			SELECT COUNT(*) FROM poll_votes WHERE option_id = poll_options.id
 		)
 		WHERE poll_id = $1
 	`, pollID)
+	if err != nil {
+		log.Println("Warning: Failed to update vote counts:", err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "Vote recorded",
