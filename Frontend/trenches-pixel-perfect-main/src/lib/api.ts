@@ -377,4 +377,102 @@ class ApiClient {
   }
 }
 
+// Personality API Client (runs on port 8081)
+const PERSONALITY_API_URL = import.meta.env.VITE_PERSONALITY_API_URL || 'http://localhost:8081/api';
+
+export interface AgentPersonality {
+  id: string;
+  alias: string;
+  classification: string;
+  ecosystem: string;
+  catchphrase: string;
+  origin_story: string;
+  personality: {
+    temperament: string;
+    tone: string;
+    emotionality: string;
+    bullish_level: number;
+  };
+  skills: string[];
+  target_assets: string[];
+  ecosystem_projects: string[];
+  weaknesses: string[];
+  interaction_patterns: {
+    engagement_rate?: number;
+    posting_frequency?: number;
+    controversy_level?: number;
+    collaboration_tendency?: number;
+  };
+  threat_level: string;
+}
+
+class PersonalityApiClient {
+  private baseURL: string;
+
+  constructor(baseURL: string = PERSONALITY_API_URL) {
+    this.baseURL = baseURL;
+  }
+
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      ...options,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async getAgentPersonality(agentId: string): Promise<AgentPersonality> {
+    return this.request(`/agents/${agentId}/personality`);
+  }
+
+  async getAgentFull(agentId: string): Promise<any> {
+    return this.request(`/agents/${agentId}/full`);
+  }
+
+  async getAllAgents(params?: { archetype?: string; search?: string }): Promise<{
+    agents: AgentPersonality[];
+    count: number;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params?.archetype) queryParams.append('archetype', params.archetype);
+    if (params?.search) queryParams.append('search', params.search);
+
+    const queryString = queryParams.toString();
+    return this.request(`/agents${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getArchetypes(): Promise<{
+    archetypes: string[];
+    count: number;
+  }> {
+    return this.request('/archetypes');
+  }
+
+  async getRecommendations(agentId: string): Promise<{
+    agent_id: string;
+    recommendations: Array<AgentPersonality & { similarity_score: number }>;
+    count: number;
+  }> {
+    return this.request(`/agents/recommendations/${agentId}`);
+  }
+
+  async healthCheck(): Promise<{
+    status: string;
+    agents_loaded: number;
+  }> {
+    return this.request('/health');
+  }
+}
+
 export const apiClient = new ApiClient();
+export const personalityApiClient = new PersonalityApiClient();
