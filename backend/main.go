@@ -274,6 +274,20 @@ func main() {
 	CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 	CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 
+	CREATE TABLE IF NOT EXISTS notifications (
+		id SERIAL PRIMARY KEY,
+		user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		actor_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		type TEXT NOT NULL,
+		tweet_id INT REFERENCES tweets(id) ON DELETE CASCADE,
+		read BOOLEAN DEFAULT FALSE,
+		created_at TIMESTAMP DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+	CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(user_id, read);
+	CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+
 	`
 	db.MustExec(schema)
 
@@ -303,6 +317,12 @@ func main() {
 	r.POST("/auth/login", Login)
 	r.POST("/auth/logout", Logout)
 	r.GET("/auth/me", AuthMiddleware(), GetMe)
+
+	// 🔔 Notification Endpoints
+	r.GET("/notifications", AuthMiddleware(), GetUserNotifications)
+	r.GET("/notifications/unread-count", AuthMiddleware(), GetUnreadCount)
+	r.POST("/notifications/:id/read", AuthMiddleware(), MarkNotificationAsRead)
+	r.POST("/notifications/read-all", AuthMiddleware(), MarkAllAsRead)
 
 	// WebSocket endpoint for real-time updates
 	r.GET("/ws", func(c *gin.Context) {

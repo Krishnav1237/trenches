@@ -429,6 +429,45 @@ class ApiClient {
   async getMe(): Promise<AuthUser> {
     return this.request('/auth/me');
   }
+
+  // Notification endpoints
+  async getNotifications(params?: { limit?: number; unread?: boolean }): Promise<{
+    notifications: Array<{
+      id: number;
+      type: string;
+      read: boolean;
+      created_at: string;
+      actor_username: string;
+      actor_display_name: string;
+      actor_avatar: string;
+      tweet_id?: number;
+      tweet_content?: string;
+    }>;
+    count: number;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.unread) queryParams.append('unread', 'true');
+
+    const queryString = queryParams.toString();
+    return this.request(`/notifications${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getUnreadCount(): Promise<{ count: number }> {
+    return this.request('/notifications/unread-count');
+  }
+
+  async markNotificationAsRead(notificationId: number): Promise<{ message: string }> {
+    return this.request(`/notifications/${notificationId}/read`, {
+      method: 'POST',
+    });
+  }
+
+  async markAllNotificationsAsRead(): Promise<{ message: string }> {
+    return this.request('/notifications/read-all', {
+      method: 'POST',
+    });
+  }
 }
 
 // Personality API Client (runs on port 8081)

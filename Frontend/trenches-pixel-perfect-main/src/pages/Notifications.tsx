@@ -1,99 +1,37 @@
 import { Layout } from '@/components/Layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Heart, Repeat2, MessageCircle, UserPlus, AtSign, Bell } from 'lucide-react';
+import { Heart, Repeat2, MessageCircle, UserPlus, AtSign, Bell, Loader2, CheckCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import pfp2 from '@/assets/pfp2.png';
-import pfp3 from '@/assets/pfp3.png';
-import pfp4 from '@/assets/pfp4.png';
-import pfp5 from '@/assets/pfp5.png';
-import pfp6 from '@/assets/pfp6.png';
+import { useState, useEffect } from 'react';
+import { apiClient } from '@/lib/api';
 
 interface NotificationItem {
-  id: string;
-  type: 'like' | 'repost' | 'comment' | 'follow' | 'mention';
-  user: {
-    username: string;
-    displayName: string;
-    avatar: string;
-    verified?: boolean;
-  };
-  content?: string;
-  timestamp: string;
+  id: number;
+  type: string;
   read: boolean;
+  created_at: string;
+  actor_username: string;
+  actor_display_name: string;
+  actor_avatar: string;
+  tweet_id?: number;
+  tweet_content?: string;
 }
 
-const mockNotifications: NotificationItem[] = [
-  {
-    id: '1',
-    type: 'like',
-    user: {
-      username: 'techguru',
-      displayName: 'Tech Guru',
-      avatar: pfp2,
-      verified: true,
-    },
-    content: 'Just shipped a new feature for Trenches! The timeline is now even smoother.',
-    timestamp: '2h',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'follow',
-    user: {
-      username: 'designer',
-      displayName: 'UI Designer',
-      avatar: pfp3,
-    },
-    timestamp: '4h',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'repost',
-    user: {
-      username: 'entrepreneur',
-      displayName: 'Startup Founder',
-      avatar: pfp4,
-      verified: true,
-    },
-    content: 'The future of social media is decentralized. Building in public and loving every moment of it!',
-    timestamp: '6h',
-    read: true,
-  },
-  {
-    id: '4',
-    type: 'mention',
-    user: {
-      username: 'coder',
-      displayName: 'Full Stack Developer',
-      avatar: pfp5,
-    },
-    content: 'Hey @johndoe, what do you think about the new Trenches update?',
-    timestamp: '1d',
-    read: true,
-  },
-  {
-    id: '5',
-    type: 'comment',
-    user: {
-      username: 'productmanager',
-      displayName: 'Product Manager',
-      avatar: pfp6,
-    },
-    content: 'This is exactly what we needed! Great work on the implementation.',
-    timestamp: '2d',
-    read: true,
-  },
-];
-
-const NotificationCard = ({ notification }: { notification: NotificationItem }) => {
+const NotificationCard = ({
+  notification,
+  onMarkAsRead
+}: {
+  notification: NotificationItem;
+  onMarkAsRead: (id: number) => void;
+}) => {
   const getIcon = () => {
     switch (notification.type) {
       case 'like':
         return <Heart className="text-like-color" size={16} fill="currentColor" />;
-      case 'repost':
+      case 'retweet':
         return <Repeat2 className="text-repost-color" size={16} />;
+      case 'reply':
       case 'comment':
         return <MessageCircle className="text-comment-color" size={16} />;
       case 'follow':
@@ -101,7 +39,7 @@ const NotificationCard = ({ notification }: { notification: NotificationItem }) 
       case 'mention':
         return <AtSign className="text-trenches-green" size={16} />;
       default:
-        return null;
+        return <Bell size={16} />;
     }
   };
 
@@ -109,68 +47,88 @@ const NotificationCard = ({ notification }: { notification: NotificationItem }) 
     switch (notification.type) {
       case 'like':
         return 'liked your post';
-      case 'repost':
-        return 'reposted your post';
+      case 'retweet':
+        return 'retweeted your post';
+      case 'reply':
       case 'comment':
-        return 'commented on your post';
+        return 'replied to your post';
       case 'follow':
         return 'followed you';
       case 'mention':
         return 'mentioned you';
       default:
-        return '';
+        return 'interacted with you';
+    }
+  };
+
+  const formatTimeAgo = (timestamp: string): string => {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffMs = now.getTime() - time.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) return `${diffDays}d`;
+    if (diffHours > 0) return `${diffHours}h`;
+    if (diffMins > 0) return `${diffMins}m`;
+    return 'Just now';
+  };
+
+  const handleClick = () => {
+    if (!notification.read) {
+      onMarkAsRead(notification.id);
     }
   };
 
   return (
-    <div className={`flex gap-3 p-4 border-b border-border hover:bg-secondary/50 transition-colors ${!notification.read ? 'bg-trenches-green-light/20' : ''}`}>
+    <div
+      className={`flex gap-3 p-4 border-b border-border hover:bg-secondary/50 transition-colors cursor-pointer ${!notification.read ? 'bg-trenches-green-light/10' : ''}`}
+      onClick={handleClick}
+    >
       <div className="flex-shrink-0 mt-1">
         {getIcon()}
       </div>
-      
+
       <div className="flex gap-3 flex-1">
-        <Link to={`/profile/${notification.user.username}`}>
+        <Link to={`/profile/${notification.actor_username}`}>
           <img
-            src={notification.user.avatar}
-            alt={notification.user.displayName}
+            src={notification.actor_avatar}
+            alt={notification.actor_display_name}
             className="trenches-avatar w-8 h-8"
           />
         </Link>
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1 mb-1">
-            <Link 
-              to={`/profile/${notification.user.username}`}
+            <Link
+              to={`/profile/${notification.actor_username}`}
               className="font-semibold hover:underline"
             >
-              {notification.user.displayName}
+              {notification.actor_display_name}
             </Link>
-            {notification.user.verified && (
-              <div className="w-4 h-4 bg-trenches-green rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">✓</span>
-              </div>
-            )}
             <span className="text-muted-foreground text-sm">
-              @{notification.user.username}
+              @{notification.actor_username}
             </span>
             <span className="text-muted-foreground text-sm">·</span>
-            <span className="text-muted-foreground text-sm">{notification.timestamp}</span>
+            <span className="text-muted-foreground text-sm">
+              {formatTimeAgo(notification.created_at)}
+            </span>
+            {!notification.read && (
+              <div className="ml-auto w-2 h-2 bg-trenches-green rounded-full"></div>
+            )}
           </div>
-          
+
           <p className="text-sm mb-2">
             <span className="text-muted-foreground">{getActionText()}</span>
           </p>
-          
-          {notification.content && (
-            <div className="bg-secondary p-3 rounded-lg text-sm text-muted-foreground">
-              {notification.content}
-            </div>
-          )}
-          
-          {notification.type === 'follow' && (
-            <Button size="sm" className="trenches-button-primary mt-2">
-              Follow back
-            </Button>
+
+          {notification.tweet_content && (
+            <Link to={`/post/${notification.tweet_id}`}>
+              <div className="bg-secondary p-3 rounded-lg text-sm text-muted-foreground hover:bg-secondary/80">
+                {notification.tweet_content}
+              </div>
+            </Link>
           )}
         </div>
       </div>
@@ -179,38 +137,127 @@ const NotificationCard = ({ notification }: { notification: NotificationItem }) 
 };
 
 const Notifications = () => {
-  const allNotifications = mockNotifications;
-  const mentionNotifications = mockNotifications.filter(n => n.type === 'mention');
-  const followNotifications = mockNotifications.filter(n => n.type === 'follow');
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [markingAllAsRead, setMarkingAllAsRead] = useState(false);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.getNotifications({ limit: 50 });
+      setNotifications(data.notifications || []);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId: number) => {
+    try {
+      await apiClient.markNotificationAsRead(notificationId);
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      setMarkingAllAsRead(true);
+      await apiClient.markAllNotificationsAsRead();
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, read: true }))
+      );
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    } finally {
+      setMarkingAllAsRead(false);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const mentionNotifications = notifications.filter(n => n.type === 'mention');
+  const followNotifications = notifications.filter(n => n.type === 'follow');
+
+  if (loading) {
+    return (
+      <Layout title="Notifications" showSearch={false}>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-trenches-green" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout title="Notifications" showSearch={false}>
+      {/* Mark All as Read Button */}
+      {unreadCount > 0 && (
+        <div className="border-b border-border p-3 bg-muted/50 flex justify-between items-center">
+          <span className="text-sm text-muted-foreground">
+            {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleMarkAllAsRead}
+            disabled={markingAllAsRead}
+            className="gap-2"
+          >
+            {markingAllAsRead ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Marking...
+              </>
+            ) : (
+              <>
+                <CheckCheck className="w-4 h-4" />
+                Mark all as read
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="w-full bg-transparent border-b border-border rounded-none h-auto p-0">
-          <TabsTrigger 
-            value="all" 
+          <TabsTrigger
+            value="all"
             className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-trenches-green data-[state=active]:bg-transparent"
           >
             All
           </TabsTrigger>
-          <TabsTrigger 
-            value="mentions" 
+          <TabsTrigger
+            value="mentions"
             className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-trenches-green data-[state=active]:bg-transparent"
           >
             Mentions
           </TabsTrigger>
-          <TabsTrigger 
-            value="follows" 
+          <TabsTrigger
+            value="follows"
             className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-trenches-green data-[state=active]:bg-transparent"
           >
             Follows
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="all" className="mt-0">
-          {allNotifications.length > 0 ? (
-            allNotifications.map((notification) => (
-              <NotificationCard key={notification.id} notification={notification} />
+          {notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+                onMarkAsRead={handleMarkAsRead}
+              />
             ))
           ) : (
             <div className="p-8 text-center text-muted-foreground">
@@ -220,11 +267,15 @@ const Notifications = () => {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="mentions" className="mt-0">
           {mentionNotifications.length > 0 ? (
             mentionNotifications.map((notification) => (
-              <NotificationCard key={notification.id} notification={notification} />
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+                onMarkAsRead={handleMarkAsRead}
+              />
             ))
           ) : (
             <div className="p-8 text-center text-muted-foreground">
@@ -234,11 +285,15 @@ const Notifications = () => {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="follows" className="mt-0">
           {followNotifications.length > 0 ? (
             followNotifications.map((notification) => (
-              <NotificationCard key={notification.id} notification={notification} />
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+                onMarkAsRead={handleMarkAsRead}
+              />
             ))
           ) : (
             <div className="p-8 text-center text-muted-foreground">
