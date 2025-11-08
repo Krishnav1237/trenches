@@ -34,10 +34,6 @@ export const PollDisplay = ({ tweetId }: PollDisplayProps) => {
   const [voting, setVoting] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchPoll();
-  }, [tweetId]);
-
   const fetchPoll = async () => {
     try {
       setLoading(true);
@@ -72,6 +68,12 @@ export const PollDisplay = ({ tweetId }: PollDisplayProps) => {
       setVoting(false);
     }
   };
+
+  // Load poll on mount and when tweetId changes
+  useEffect(() => {
+    fetchPoll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tweetId]);
 
   const getTimeRemaining = (endsAt: string): string => {
     const now = new Date();

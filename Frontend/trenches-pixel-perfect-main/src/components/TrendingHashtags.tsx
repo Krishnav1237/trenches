@@ -13,10 +13,6 @@ export const TrendingHashtags = () => {
   const [hashtags, setHashtags] = useState<Hashtag[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTrendingHashtags();
-  }, []);
-
   const fetchTrendingHashtags = async () => {
     try {
       setLoading(true);
@@ -28,6 +24,12 @@ export const TrendingHashtags = () => {
       setLoading(false);
     }
   };
+
+  // Load trending hashtags on mount
+  useEffect(() => {
+    fetchTrendingHashtags();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loading) {
     return (
