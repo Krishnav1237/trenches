@@ -288,7 +288,23 @@ func main() {
 	CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(user_id, read);
 	CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
 
+	CREATE TABLE IF NOT EXISTS bookmarks (
+		id SERIAL PRIMARY KEY,
+		user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		tweet_id INT NOT NULL REFERENCES tweets(id) ON DELETE CASCADE,
+		created_at TIMESTAMP DEFAULT NOW(),
+		UNIQUE(user_id, tweet_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
+	CREATE INDEX IF NOT EXISTS idx_bookmarks_tweet_id ON bookmarks(tweet_id);
+	CREATE INDEX IF NOT EXISTS idx_bookmarks_created_at ON bookmarks(created_at DESC);
+
 	`
+
+	// Add pinned_tweet_id column to users table if it doesn't exist
+	db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pinned_tweet_id INT REFERENCES tweets(id) ON DELETE SET NULL`)
+
 	db.MustExec(schema)
 
 	r := gin.Default()
@@ -323,6 +339,17 @@ func main() {
 	r.GET("/notifications/unread-count", AuthMiddleware(), GetUnreadCount)
 	r.POST("/notifications/:id/read", AuthMiddleware(), MarkNotificationAsRead)
 	r.POST("/notifications/read-all", AuthMiddleware(), MarkAllAsRead)
+
+	// 🔖 Bookmark Endpoints
+	r.POST("/tweets/:id/bookmark", AuthMiddleware(), AddBookmark)
+	r.DELETE("/tweets/:id/bookmark", AuthMiddleware(), RemoveBookmark)
+	r.GET("/bookmarks", AuthMiddleware(), GetBookmarks)
+	r.GET("/tweets/:id/bookmarked", AuthMiddleware(), CheckBookmark)
+
+	// 📌 Pinned Tweet Endpoints
+	r.POST("/tweets/:id/pin", AuthMiddleware(), PinTweet)
+	r.POST("/tweets/unpin", AuthMiddleware(), UnpinTweet)
+	r.GET("/users/:id/pinned-tweet", GetPinnedTweet)
 
 	// WebSocket endpoint for real-time updates
 	r.GET("/ws", func(c *gin.Context) {

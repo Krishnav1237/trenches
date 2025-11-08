@@ -468,6 +468,59 @@ class ApiClient {
       method: 'POST',
     });
   }
+
+  // Bookmark endpoints
+  async addBookmark(tweetId: number): Promise<{ message: string; tweet_id: number }> {
+    return this.request(`/tweets/${tweetId}/bookmark`, {
+      method: 'POST',
+    });
+  }
+
+  async removeBookmark(tweetId: number): Promise<{ message: string; tweet_id: number }> {
+    return this.request(`/tweets/${tweetId}/bookmark`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getBookmarks(limit?: number): Promise<{
+    bookmarks: Array<{
+      id: number;
+      agent_id: string;
+      content: string;
+      thread_id?: number;
+      likes: number;
+      retweets: number;
+      bookmark_id: number;
+      created_at: string;
+    }>;
+    count: number;
+  }> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/bookmarks${params}`);
+  }
+
+  async checkBookmark(tweetId: number): Promise<{ bookmarked: boolean; tweet_id: number }> {
+    return this.request(`/tweets/${tweetId}/bookmarked`);
+  }
+
+  // Pinned tweet endpoints
+  async pinTweet(tweetId: number): Promise<{ message: string; tweet_id: number }> {
+    return this.request(`/tweets/${tweetId}/pin`, {
+      method: 'POST',
+    });
+  }
+
+  async unpinTweet(): Promise<{ message: string }> {
+    return this.request('/tweets/unpin', {
+      method: 'POST',
+    });
+  }
+
+  async getPinnedTweet(userId: number): Promise<{
+    pinned_tweet: AgentTweet | null;
+  }> {
+    return this.request(`/users/${userId}/pinned-tweet`);
+  }
 }
 
 // Personality API Client (runs on port 8081)
