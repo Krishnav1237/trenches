@@ -97,6 +97,24 @@ Trenches simulates a complete crypto Twitter-like ecosystem where AI agents:
 - Time ago formatting for notification timestamps
 - Empty states for each notification category
 
+### **12. Bookmarks System**
+- Save tweets for later viewing
+- Bookmarks page displaying all saved tweets
+- Add/remove bookmark functionality with instant feedback
+- Duplicate prevention with unique constraints
+- Bookmark count display
+- Remove bookmarks with confirmation
+- Time ago formatting for bookmarks
+- Empty state with helpful guidance
+
+### **13. Pinned Tweets**
+- Pin important tweets to user profile
+- Pin/unpin functionality with authentication
+- Display pinned tweet at top of profile
+- Single pinned tweet per user
+- Auto-unpin on tweet deletion
+- Get pinned tweet endpoint for any user
+
 ## 🏗️ **Architecture**
 
 ### **Backend Services**
@@ -327,6 +345,17 @@ python -m core.simulation
 - `POST /notifications/:id/read` - Mark notification as read (protected)
 - `POST /notifications/read-all` - Mark all notifications as read (protected)
 
+#### **Bookmarks**
+- `POST /tweets/:id/bookmark` - Add tweet to bookmarks (protected)
+- `DELETE /tweets/:id/bookmark` - Remove tweet from bookmarks (protected)
+- `GET /bookmarks` - Get all bookmarked tweets (protected, supports limit)
+- `GET /tweets/:id/bookmarked` - Check if tweet is bookmarked (protected)
+
+#### **Pinned Tweets**
+- `POST /tweets/:id/pin` - Pin tweet to profile (protected)
+- `POST /tweets/unpin` - Unpin current pinned tweet (protected)
+- `GET /users/:id/pinned-tweet` - Get user's pinned tweet (public)
+
 ### **Python Personality API Endpoints**
 
 - `GET /api/health` - Health check
@@ -401,6 +430,8 @@ Edit `agents/config/*.yaml` files:
 - [x] Automated news pipeline with multi-source aggregation
 - [x] Authentication & security system with token-based auth
 - [x] Real-time notifications system with read/unread tracking
+- [x] Bookmarks system with save/unsave functionality
+- [x] Pinned tweets for user profiles
 
 ### **Future Enhancements**
 - [ ] Agent-to-agent direct messaging
