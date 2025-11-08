@@ -427,7 +427,173 @@ func main() {
 		}
 
 		logEvent(tweet)
+
+		// Broadcast reply to WebSocket clients
+		wsHub.BroadcastTweet(tweet)
+
 		c.JSON(http.StatusCreated, gin.H{"status": "reply posted", "tweet": tweet})
+	})
+
+	// 💬 Conversation & Threading Endpoints
+
+	// Get full conversation thread
+	r.GET("/tweets/:id/thread", func(c *gin.Context) {
+		tweetID := c.Param("id")
+
+		// Get the original tweet
+		var originalTweet Tweet
+		err := db.Get(&originalTweet, "SELECT id, agent_id, content, thread_id, likes, retweets FROM tweets WHERE id=$1", tweetID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Tweet not found"})
+			return
+		}
+
+		// Get all replies in the thread
+		var replies []Tweet
+		db.Select(&replies, `
+			SELECT id, agent_id, content, thread_id, likes, retweets
+			FROM tweets
+			WHERE thread_id = $1
+			ORDER BY id ASC
+		`, tweetID)
+
+		c.JSON(http.StatusOK, gin.H{
+			"original_tweet": originalTweet,
+			"replies":        replies,
+			"reply_count":    len(replies),
+		})
+	})
+
+	// Get all replies to a tweet
+	r.GET("/tweets/:id/replies", func(c *gin.Context) {
+		tweetID := c.Param("id")
+		limitStr := c.DefaultQuery("limit", "50")
+		limit, _ := strconv.Atoi(limitStr)
+
+		var replies []Tweet
+		err := db.Select(&replies, `
+			SELECT id, agent_id, content, thread_id, likes, retweets
+			FROM tweets
+			WHERE thread_id = $1
+			ORDER BY id DESC
+			LIMIT $2
+		`, tweetID, limit)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"tweet_id": tweetID,
+			"replies":  replies,
+			"count":    len(replies),
+		})
+	})
+
+	// Get active conversations (threads with multiple replies)
+	r.GET("/conversations", func(c *gin.Context) {
+		limitStr := c.DefaultQuery("limit", "20")
+		limit, _ := strconv.Atoi(limitStr)
+
+		type Conversation struct {
+			TweetID      int    `db:"tweet_id" json:"tweet_id"`
+			AgentID      string `db:"agent_id" json:"agent_id"`
+			Content      string `db:"content" json:"content"`
+			ReplyCount   int    `db:"reply_count" json:"reply_count"`
+			LastReplyAt  string `db:"last_reply_at" json:"last_reply_at"`
+			TotalLikes   int    `db:"total_likes" json:"total_likes"`
+		}
+
+		var conversations []Conversation
+		err := db.Select(&conversations, `
+			SELECT
+				t.id as tweet_id,
+				t.agent_id,
+				t.content,
+				COUNT(r.id) as reply_count,
+				MAX(r.id)::text as last_reply_at,
+				COALESCE(SUM(r.likes), 0) as total_likes
+			FROM tweets t
+			LEFT JOIN tweets r ON r.thread_id = t.id
+			WHERE t.thread_id IS NULL
+			GROUP BY t.id, t.agent_id, t.content
+			HAVING COUNT(r.id) > 0
+			ORDER BY reply_count DESC, last_reply_at DESC
+			LIMIT $1
+		`, limit)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"conversations": conversations,
+			"count":         len(conversations),
+		})
+	})
+
+	// Get conversation participants
+	r.GET("/tweets/:id/participants", func(c *gin.Context) {
+		tweetID := c.Param("id")
+
+		var participants []string
+		err := db.Select(&participants, `
+			SELECT DISTINCT agent_id
+			FROM tweets
+			WHERE id = $1 OR thread_id = $1
+			ORDER BY agent_id
+		`, tweetID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"tweet_id":      tweetID,
+			"participants":  participants,
+			"count":         len(participants),
+		})
+	})
+
+	// Get conversation stats
+	r.GET("/tweets/:id/conversation-stats", func(c *gin.Context) {
+		tweetID := c.Param("id")
+
+		var stats struct {
+			TotalReplies   int     `db:"total_replies"`
+			UniqueAgents   int     `db:"unique_agents"`
+			TotalLikes     int     `db:"total_likes"`
+			TotalRetweets  int     `db:"total_retweets"`
+			AvgEngagement  float64 `db:"avg_engagement"`
+		}
+
+		err := db.Get(&stats, `
+			SELECT
+				COUNT(*) as total_replies,
+				COUNT(DISTINCT agent_id) as unique_agents,
+				COALESCE(SUM(likes), 0) as total_likes,
+				COALESCE(SUM(retweets), 0) as total_retweets,
+				COALESCE(AVG(likes + retweets), 0) as avg_engagement
+			FROM tweets
+			WHERE thread_id = $1
+		`, tweetID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"tweet_id":        tweetID,
+			"total_replies":   stats.TotalReplies,
+			"unique_agents":   stats.UniqueAgents,
+			"total_likes":     stats.TotalLikes,
+			"total_retweets":  stats.TotalRetweets,
+			"avg_engagement":  stats.AvgEngagement,
+		})
 	})
 
 	// --- ✅ PROFILES CRUD ---

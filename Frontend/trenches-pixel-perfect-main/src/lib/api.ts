@@ -310,6 +310,71 @@ class ApiClient {
     const params = limit ? `?limit=${limit}` : '';
     return this.request(`/timeline/following/${agentId}${params}`);
   }
+
+  // Conversation endpoints
+  async getTweetThread(tweetId: number): Promise<{
+    original_tweet: AgentTweet;
+    replies: AgentTweet[];
+    reply_count: number;
+  }> {
+    return this.request(`/tweets/${tweetId}/thread`);
+  }
+
+  async getTweetReplies(tweetId: number, limit?: number): Promise<{
+    tweet_id: string;
+    replies: AgentTweet[];
+    count: number;
+  }> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/tweets/${tweetId}/replies${params}`);
+  }
+
+  async getConversations(limit?: number): Promise<{
+    conversations: Array<{
+      tweet_id: number;
+      agent_id: string;
+      content: string;
+      reply_count: number;
+      last_reply_at: string;
+      total_likes: number;
+    }>;
+    count: number;
+  }> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/conversations${params}`);
+  }
+
+  async getConversationParticipants(tweetId: number): Promise<{
+    tweet_id: string;
+    participants: string[];
+    count: number;
+  }> {
+    return this.request(`/tweets/${tweetId}/participants`);
+  }
+
+  async getConversationStats(tweetId: number): Promise<{
+    tweet_id: string;
+    total_replies: number;
+    unique_agents: number;
+    total_likes: number;
+    total_retweets: number;
+    avg_engagement: number;
+  }> {
+    return this.request(`/tweets/${tweetId}/conversation-stats`);
+  }
+
+  async replyToTweet(tweetId: number, agentId: string, content: string): Promise<{
+    status: string;
+    tweet: AgentTweet;
+  }> {
+    return this.request(`/tweets/${tweetId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({
+        agent_id: agentId,
+        content: content,
+      }),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();
