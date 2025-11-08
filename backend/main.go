@@ -300,10 +300,88 @@ func main() {
 	CREATE INDEX IF NOT EXISTS idx_bookmarks_tweet_id ON bookmarks(tweet_id);
 	CREATE INDEX IF NOT EXISTS idx_bookmarks_created_at ON bookmarks(created_at DESC);
 
+	CREATE TABLE IF NOT EXISTS conversations (
+		id SERIAL PRIMARY KEY,
+		user1_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		user2_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		last_message_at TIMESTAMP DEFAULT NOW(),
+		created_at TIMESTAMP DEFAULT NOW(),
+		UNIQUE(user1_id, user2_id),
+		CHECK (user1_id < user2_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_conversations_user1 ON conversations(user1_id);
+	CREATE INDEX IF NOT EXISTS idx_conversations_user2 ON conversations(user2_id);
+	CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at DESC);
+
+	CREATE TABLE IF NOT EXISTS messages (
+		id SERIAL PRIMARY KEY,
+		conversation_id INT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+		sender_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		content TEXT NOT NULL,
+		read BOOLEAN DEFAULT FALSE,
+		created_at TIMESTAMP DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+	CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+	CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
+
+	CREATE TABLE IF NOT EXISTS hashtags (
+		id SERIAL PRIMARY KEY,
+		tag TEXT NOT NULL UNIQUE,
+		count INT DEFAULT 0,
+		last_used TIMESTAMP DEFAULT NOW()
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_hashtags_tag ON hashtags(tag);
+	CREATE INDEX IF NOT EXISTS idx_hashtags_count ON hashtags(count DESC);
+
+	CREATE TABLE IF NOT EXISTS tweet_hashtags (
+		id SERIAL PRIMARY KEY,
+		tweet_id INT NOT NULL REFERENCES tweets(id) ON DELETE CASCADE,
+		hashtag_id INT NOT NULL REFERENCES hashtags(id) ON DELETE CASCADE,
+		UNIQUE(tweet_id, hashtag_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_tweet_hashtags_tweet ON tweet_hashtags(tweet_id);
+	CREATE INDEX IF NOT EXISTS idx_tweet_hashtags_hashtag ON tweet_hashtags(hashtag_id);
+
+	CREATE TABLE IF NOT EXISTS polls (
+		id SERIAL PRIMARY KEY,
+		tweet_id INT NOT NULL UNIQUE REFERENCES tweets(id) ON DELETE CASCADE,
+		duration_hours INT NOT NULL DEFAULT 24,
+		ends_at TIMESTAMP NOT NULL,
+		created_at TIMESTAMP DEFAULT NOW()
+	);
+
+	CREATE TABLE IF NOT EXISTS poll_options (
+		id SERIAL PRIMARY KEY,
+		poll_id INT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+		option_text TEXT NOT NULL,
+		vote_count INT DEFAULT 0,
+		option_index INT NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_poll_options_poll ON poll_options(poll_id);
+
+	CREATE TABLE IF NOT EXISTS poll_votes (
+		id SERIAL PRIMARY KEY,
+		poll_id INT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
+		user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		option_id INT NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
+		created_at TIMESTAMP DEFAULT NOW(),
+		UNIQUE(poll_id, user_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_poll_votes_poll ON poll_votes(poll_id);
+	CREATE INDEX IF NOT EXISTS idx_poll_votes_user ON poll_votes(user_id);
+
 	`
 
-	// Add pinned_tweet_id column to users table if it doesn't exist
+	// Add additional columns to tables if they don't exist
 	db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pinned_tweet_id INT REFERENCES tweets(id) ON DELETE SET NULL`)
+	db.Exec(`ALTER TABLE tweets ADD COLUMN IF NOT EXISTS quoted_tweet_id INT REFERENCES tweets(id) ON DELETE SET NULL`)
 
 	db.MustExec(schema)
 
@@ -351,6 +429,21 @@ func main() {
 	r.POST("/tweets/unpin", AuthMiddleware(), UnpinTweet)
 	r.GET("/users/:id/pinned-tweet", GetPinnedTweet)
 
+	// 💬 Direct Messages Endpoints
+	r.POST("/messages/send", AuthMiddleware(), SendMessage)
+	r.GET("/messages/conversations", AuthMiddleware(), GetConversations)
+	r.GET("/messages/conversation/:user_id", AuthMiddleware(), GetMessages)
+	r.GET("/messages/unread-count", AuthMiddleware(), GetUnreadMessageCount)
+
+	// #️⃣ Hashtag Endpoints
+	r.GET("/hashtags/trending", GetTrendingHashtags)
+	r.GET("/hashtags/:tag/tweets", GetTweetsByHashtag)
+
+	// 📊 Poll Endpoints
+	r.POST("/polls/create", AuthMiddleware(), CreatePoll)
+	r.GET("/polls/tweet/:id", GetPoll)
+	r.POST("/polls/:id/vote", AuthMiddleware(), VotePoll)
+
 	// WebSocket endpoint for real-time updates
 	r.GET("/ws", func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -390,6 +483,17 @@ func main() {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		// Process hashtags and mentions
+		go func() {
+			if err := ProcessHashtags(tweet.ID, tweet.Content); err != nil {
+				log.Println("Failed to process hashtags:", err)
+			}
+			if err := ProcessMentions(tweet.ID, tweet.Content); err != nil {
+				log.Println("Failed to process mentions:", err)
+			}
+		}()
+
 		// cached Tweet
 		tweetJSON, _ := json.Marshal(tweet)
 		err = RedisClient.Set(ctx, fmt.Sprintf("tweet:%d", tweet.ID), tweetJSON, 5*time.Minute).Err()

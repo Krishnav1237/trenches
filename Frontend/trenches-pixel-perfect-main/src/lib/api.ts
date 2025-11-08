@@ -521,6 +521,132 @@ class ApiClient {
   }> {
     return this.request(`/users/${userId}/pinned-tweet`);
   }
+
+  // Direct Messages endpoints
+  async sendMessage(recipientId: number, content: string): Promise<{
+    message: string;
+    message_id: number;
+  }> {
+    return this.request('/messages/send', {
+      method: 'POST',
+      body: JSON.stringify({
+        recipient_id: recipientId,
+        content,
+      }),
+    });
+  }
+
+  async getConversationsList(): Promise<{
+    conversations: Array<{
+      conversation_id: number;
+      other_user_id: number;
+      other_username: string;
+      other_display_name: string;
+      other_avatar: string;
+      last_message: string;
+      last_message_at: string;
+      unread_count: number;
+    }>;
+    count: number;
+  }> {
+    return this.request('/messages/conversations');
+  }
+
+  async getConversationMessages(userId: number): Promise<{
+    messages: Array<{
+      id: number;
+      conversation_id: number;
+      sender_id: number;
+      content: string;
+      read: boolean;
+      created_at: string;
+    }>;
+    count: number;
+  }> {
+    return this.request(`/messages/conversation/${userId}`);
+  }
+
+  async getUnreadMessageCount(): Promise<{ count: number }> {
+    return this.request('/messages/unread-count');
+  }
+
+  // Hashtag endpoints
+  async getTrendingHashtags(params?: { limit?: number; days?: number }): Promise<{
+    hashtags: Array<{
+      tag: string;
+      count: number;
+      last_used: string;
+    }>;
+    count: number;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.days) queryParams.append('days', params.days.toString());
+
+    const queryString = queryParams.toString();
+    return this.request(`/hashtags/trending${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getTweetsByHashtag(tag: string, limit?: number): Promise<{
+    hashtag: string;
+    tweets: AgentTweet[];
+    count: number;
+  }> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/hashtags/${encodeURIComponent(tag)}/tweets${params}`);
+  }
+
+  // Poll endpoints
+  async createPoll(data: {
+    content: string;
+    options: string[];
+    duration_hours: number;
+  }): Promise<{
+    poll_id: number;
+    tweet_id: number;
+    options: Array<{
+      id: number;
+      poll_id: number;
+      option_text: string;
+      vote_count: number;
+      option_index: number;
+    }>;
+    ends_at: string;
+  }> {
+    return this.request('/polls/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPoll(tweetId: number): Promise<{
+    id: number;
+    tweet_id: number;
+    duration_hours: number;
+    ends_at: string;
+    is_ended: boolean;
+    total_votes: number;
+    options: Array<{
+      id: number;
+      poll_id: number;
+      option_text: string;
+      vote_count: number;
+      option_index: number;
+    }>;
+    user_vote?: number;
+  }> {
+    return this.request(`/polls/tweet/${tweetId}`);
+  }
+
+  async votePoll(pollId: number, optionId: number): Promise<{
+    message: string;
+    option_id: number;
+  }> {
+    return this.request(`/polls/${pollId}/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ option_id: optionId }),
+    });
+  }
 }
 
 // Personality API Client (runs on port 8081)

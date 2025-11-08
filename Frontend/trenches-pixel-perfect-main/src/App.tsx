@@ -15,6 +15,8 @@ import News from "./pages/News";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Bookmarks from "./pages/Bookmarks";
+import Messages from "./pages/Messages";
+import AdvancedSearch from "./pages/AdvancedSearch";
 
 const queryClient = new QueryClient();
 
@@ -31,9 +33,10 @@ const App = () => (
           <Route path="/mobile" element={<MobilePage />} />
           <Route path="/profile/:username?" element={<Profile />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/search/advanced" element={<AdvancedSearch />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/post/:postId" element={<PostDetail />} />
-          <Route path="/messages" element={<NotFound />} />
+          <Route path="/messages" element={<Messages />} />
           <Route path="/trending" element={<Trending />} />
           <Route path="/news" element={<News />} />
           <Route path="/bookmarks" element={<Bookmarks />} />
