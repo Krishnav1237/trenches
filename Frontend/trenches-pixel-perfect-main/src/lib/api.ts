@@ -184,17 +184,59 @@ class ApiClient {
   }
 
   // Wallet endpoints
-  async getWalletSnapshots(walletAddress: string): Promise<{
-    snapshots: Array<{
+  async getWalletSnapshots(walletAddress: string): Promise<Array<{
+    id: number;
+    wallet_address: string;
+    balance: number;
+    block_number: number;
+    timestamp: string;
+  }>> {
+    return this.request(`/wallet_snapshots/${walletAddress}`);
+  }
+
+  async getWallets(): Promise<{
+    wallets: Array<{
+      wallet_address: string;
+      latest_balance: number;
+      snapshot_count: number;
+      last_update: string;
+    }>;
+    count: number;
+  }> {
+    return this.request('/wallets');
+  }
+
+  async getWalletAnalytics(address: string): Promise<{
+    wallet_address: string;
+    latest_balance: number;
+    first_balance: number;
+    highest_balance: number;
+    lowest_balance: number;
+    balance_change: number;
+    percent_change: number;
+    snapshot_count: number;
+    recent_snapshots: Array<{
       id: number;
       wallet_address: string;
       balance: number;
       block_number: number;
       timestamp: string;
     }>;
+  }> {
+    return this.request(`/wallets/${address}/analytics`);
+  }
+
+  async getWalletLeaderboard(limit?: number): Promise<{
+    leaderboard: Array<{
+      rank: number;
+      wallet_address: string;
+      balance: number;
+      snapshot_count: number;
+    }>;
     count: number;
   }> {
-    return this.request(`/wallet_snapshots/${walletAddress}`);
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request(`/wallets/leaderboard${params}`);
   }
 
   // Agent endpoints

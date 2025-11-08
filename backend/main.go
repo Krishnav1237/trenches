@@ -716,6 +716,134 @@ func main() {
 		c.JSON(http.StatusOK, snapshots)
 	})
 
+	// Get all tracked wallets
+	r.GET("/wallets", func(c *gin.Context) {
+		var wallets []struct {
+			WalletAddress  string  `db:"wallet_address" json:"wallet_address"`
+			LatestBalance  float64 `db:"latest_balance" json:"latest_balance"`
+			SnapshotCount  int     `db:"snapshot_count" json:"snapshot_count"`
+			LastUpdate     string  `db:"last_update" json:"last_update"`
+		}
+
+		err := db.Select(&wallets, `
+			SELECT
+				wallet_address,
+				MAX(balance) as latest_balance,
+				COUNT(*) as snapshot_count,
+				MAX(timestamp)::text as last_update
+			FROM wallet_snapshots
+			GROUP BY wallet_address
+			ORDER BY latest_balance DESC
+		`)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"wallets": wallets,
+			"count":   len(wallets),
+		})
+	})
+
+	// Get wallet analytics
+	r.GET("/wallets/:address/analytics", func(c *gin.Context) {
+		address := c.Param("address")
+
+		// Get latest balance and first balance
+		var analytics struct {
+			LatestBalance float64 `db:"latest_balance"`
+			FirstBalance  float64 `db:"first_balance"`
+			HighestBalance float64 `db:"highest_balance"`
+			LowestBalance  float64 `db:"lowest_balance"`
+			SnapshotCount  int     `db:"snapshot_count"`
+		}
+
+		err := db.Get(&analytics, `
+			SELECT
+				MAX(balance) as latest_balance,
+				MIN(balance) as first_balance,
+				MAX(balance) as highest_balance,
+				MIN(balance) as lowest_balance,
+				COUNT(*) as snapshot_count
+			FROM wallet_snapshots
+			WHERE wallet_address = $1
+		`, address)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		balanceChange := analytics.LatestBalance - analytics.FirstBalance
+		percentChange := 0.0
+		if analytics.FirstBalance > 0 {
+			percentChange = (balanceChange / analytics.FirstBalance) * 100
+		}
+
+		// Get recent snapshots for chart
+		var recentSnapshots []WalletSnapshot
+		db.Select(&recentSnapshots, `
+			SELECT * FROM wallet_snapshots
+			WHERE wallet_address = $1
+			ORDER BY timestamp DESC
+			LIMIT 30
+		`, address)
+
+		c.JSON(http.StatusOK, gin.H{
+			"wallet_address":   address,
+			"latest_balance":   analytics.LatestBalance,
+			"first_balance":    analytics.FirstBalance,
+			"highest_balance":  analytics.HighestBalance,
+			"lowest_balance":   analytics.LowestBalance,
+			"balance_change":   balanceChange,
+			"percent_change":   percentChange,
+			"snapshot_count":   analytics.SnapshotCount,
+			"recent_snapshots": recentSnapshots,
+		})
+	})
+
+	// Wallet leaderboard
+	r.GET("/wallets/leaderboard", func(c *gin.Context) {
+		limitStr := c.DefaultQuery("limit", "10")
+		limit, _ := strconv.Atoi(limitStr)
+
+		type WalletRank struct {
+			Rank          int     `json:"rank"`
+			WalletAddress string  `db:"wallet_address" json:"wallet_address"`
+			Balance       float64 `db:"balance" json:"balance"`
+			SnapshotCount int     `db:"snapshot_count" json:"snapshot_count"`
+		}
+
+		var leaderboard []WalletRank
+		err := db.Select(&leaderboard, `
+			SELECT
+				wallet_address,
+				MAX(balance) as balance,
+				COUNT(*) as snapshot_count
+			FROM wallet_snapshots
+			GROUP BY wallet_address
+			ORDER BY balance DESC
+			LIMIT $1
+		`, limit)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Add rank numbers
+		for i := range leaderboard {
+			leaderboard[i].Rank = i + 1
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"leaderboard": leaderboard,
+			"count":       len(leaderboard),
+		})
+	})
+
 	// 📰 Get all news
 	r.GET("/news", func(c *gin.Context) {
 		limit := 20
