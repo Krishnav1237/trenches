@@ -29,15 +29,15 @@ type Notification struct {
 }
 
 type NotificationWithDetails struct {
-	ID              int       `json:"id"`
-	Type            string    `json:"type"`
-	Read            bool      `json:"read"`
-	CreatedAt       time.Time `json:"created_at"`
-	ActorUsername   string    `json:"actor_username"`
-	ActorDisplayName string   `json:"actor_display_name"`
-	ActorAvatar     string    `json:"actor_avatar"`
-	TweetID         *int      `json:"tweet_id,omitempty"`
-	TweetContent    *string   `json:"tweet_content,omitempty"`
+	ID               int       `json:"id"`
+	Type             string    `json:"type"`
+	Read             bool      `json:"read"`
+	CreatedAt        time.Time `json:"created_at"`
+	ActorUsername    string    `json:"actor_username"`
+	ActorDisplayName string    `json:"actor_display_name"`
+	ActorAvatar      string    `json:"actor_avatar"`
+	TweetID          *int      `json:"tweet_id,omitempty"`
+	TweetContent     *string   `json:"tweet_content,omitempty"`
 }
 
 // CreateNotification creates a new notification

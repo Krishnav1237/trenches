@@ -688,12 +688,12 @@ func main() {
 		limit, _ := strconv.Atoi(limitStr)
 
 		type Conversation struct {
-			TweetID      int    `db:"tweet_id" json:"tweet_id"`
-			AgentID      string `db:"agent_id" json:"agent_id"`
-			Content      string `db:"content" json:"content"`
-			ReplyCount   int    `db:"reply_count" json:"reply_count"`
-			LastReplyAt  string `db:"last_reply_at" json:"last_reply_at"`
-			TotalLikes   int    `db:"total_likes" json:"total_likes"`
+			TweetID     int    `db:"tweet_id" json:"tweet_id"`
+			AgentID     string `db:"agent_id" json:"agent_id"`
+			Content     string `db:"content" json:"content"`
+			ReplyCount  int    `db:"reply_count" json:"reply_count"`
+			LastReplyAt string `db:"last_reply_at" json:"last_reply_at"`
+			TotalLikes  int    `db:"total_likes" json:"total_likes"`
 		}
 
 		var conversations []Conversation
@@ -743,9 +743,9 @@ func main() {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"tweet_id":      tweetID,
-			"participants":  participants,
-			"count":         len(participants),
+			"tweet_id":     tweetID,
+			"participants": participants,
+			"count":        len(participants),
 		})
 	})
 
@@ -754,11 +754,11 @@ func main() {
 		tweetID := c.Param("id")
 
 		var stats struct {
-			TotalReplies   int     `db:"total_replies"`
-			UniqueAgents   int     `db:"unique_agents"`
-			TotalLikes     int     `db:"total_likes"`
-			TotalRetweets  int     `db:"total_retweets"`
-			AvgEngagement  float64 `db:"avg_engagement"`
+			TotalReplies  int     `db:"total_replies"`
+			UniqueAgents  int     `db:"unique_agents"`
+			TotalLikes    int     `db:"total_likes"`
+			TotalRetweets int     `db:"total_retweets"`
+			AvgEngagement float64 `db:"avg_engagement"`
 		}
 
 		err := db.Get(&stats, `
@@ -778,12 +778,12 @@ func main() {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"tweet_id":        tweetID,
-			"total_replies":   stats.TotalReplies,
-			"unique_agents":   stats.UniqueAgents,
-			"total_likes":     stats.TotalLikes,
-			"total_retweets":  stats.TotalRetweets,
-			"avg_engagement":  stats.AvgEngagement,
+			"tweet_id":       tweetID,
+			"total_replies":  stats.TotalReplies,
+			"unique_agents":  stats.UniqueAgents,
+			"total_likes":    stats.TotalLikes,
+			"total_retweets": stats.TotalRetweets,
+			"avg_engagement": stats.AvgEngagement,
 		})
 	})
 
@@ -1076,10 +1076,10 @@ func main() {
 	// Get all tracked wallets
 	r.GET("/wallets", func(c *gin.Context) {
 		var wallets []struct {
-			WalletAddress  string  `db:"wallet_address" json:"wallet_address"`
-			LatestBalance  float64 `db:"latest_balance" json:"latest_balance"`
-			SnapshotCount  int     `db:"snapshot_count" json:"snapshot_count"`
-			LastUpdate     string  `db:"last_update" json:"last_update"`
+			WalletAddress string  `db:"wallet_address" json:"wallet_address"`
+			LatestBalance float64 `db:"latest_balance" json:"latest_balance"`
+			SnapshotCount int     `db:"snapshot_count" json:"snapshot_count"`
+			LastUpdate    string  `db:"last_update" json:"last_update"`
 		}
 
 		err := db.Select(&wallets, `
@@ -1110,8 +1110,8 @@ func main() {
 
 		// Get latest balance and first balance
 		var analytics struct {
-			LatestBalance float64 `db:"latest_balance"`
-			FirstBalance  float64 `db:"first_balance"`
+			LatestBalance  float64 `db:"latest_balance"`
+			FirstBalance   float64 `db:"first_balance"`
 			HighestBalance float64 `db:"highest_balance"`
 			LowestBalance  float64 `db:"lowest_balance"`
 			SnapshotCount  int     `db:"snapshot_count"`
@@ -1348,8 +1348,8 @@ func main() {
 
 		// Get top mentioned tokens from recent tweets (last 1000 tweets)
 		type TokenCount struct {
-			Token   string `db:"token"`
-			Count   int    `db:"count"`
+			Token    string  `db:"token"`
+			Count    int     `db:"count"`
 			AvgLikes float64 `db:"avg_likes"`
 		}
 
@@ -1396,7 +1396,7 @@ func main() {
 
 	// 📊 Agent Search
 	r.GET("/search/agents", func(c *gin.Context) {
-		query := c.Query("q")           // Search query
+		query := c.Query("q") // Search query
 		limitStr := c.DefaultQuery("limit", "20")
 		limit, _ := strconv.Atoi(limitStr)
 
@@ -1435,10 +1435,10 @@ func main() {
 		limit, _ := strconv.Atoi(limitStr)
 
 		type AgentStats struct {
-			AgentID      string  `db:"agent_id" json:"agent_id"`
-			TotalTweets  int     `db:"total_tweets" json:"total_tweets"`
-			TotalLikes   int     `db:"total_likes" json:"total_likes"`
-			TotalRetweets int    `db:"total_retweets" json:"total_retweets"`
+			AgentID       string  `db:"agent_id" json:"agent_id"`
+			TotalTweets   int     `db:"total_tweets" json:"total_tweets"`
+			TotalLikes    int     `db:"total_likes" json:"total_likes"`
+			TotalRetweets int     `db:"total_retweets" json:"total_retweets"`
 			AvgEngagement float64 `db:"avg_engagement" json:"avg_engagement"`
 		}
 

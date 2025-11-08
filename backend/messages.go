@@ -26,13 +26,13 @@ type Message struct {
 }
 
 type ConversationWithUser struct {
-	ID             int       `json:"id"`
-	OtherUserID    int       `json:"other_user_id"`
-	OtherUsername  string    `json:"other_username"`
-	OtherAvatar    string    `json:"other_avatar"`
-	LastMessage    string    `json:"last_message"`
-	LastMessageAt  time.Time `json:"last_message_at"`
-	UnreadCount    int       `json:"unread_count"`
+	ID            int       `json:"id"`
+	OtherUserID   int       `json:"other_user_id"`
+	OtherUsername string    `json:"other_username"`
+	OtherAvatar   string    `json:"other_avatar"`
+	LastMessage   string    `json:"last_message"`
+	LastMessageAt time.Time `json:"last_message_at"`
+	UnreadCount   int       `json:"unread_count"`
 }
 
 type MessageWithSender struct {
